@@ -1,0 +1,4 @@
+build
+.vscode
+.directory
+wasm-test-server/node_modules

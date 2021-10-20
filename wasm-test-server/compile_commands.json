@@ -1,0 +1,47 @@
+[
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/src/imgui-experiment.cpp.o -c /home/cedric/git/imgui-experiment/src/imgui-experiment.cpp",
+  "file": "/home/cedric/git/imgui-experiment/src/imgui-experiment.cpp"
+},
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/thirdparty/imgui/imgui.cpp.o -c /home/cedric/git/imgui-experiment/thirdparty/imgui/imgui.cpp",
+  "file": "/home/cedric/git/imgui-experiment/thirdparty/imgui/imgui.cpp"
+},
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/thirdparty/imgui/imgui_draw.cpp.o -c /home/cedric/git/imgui-experiment/thirdparty/imgui/imgui_draw.cpp",
+  "file": "/home/cedric/git/imgui-experiment/thirdparty/imgui/imgui_draw.cpp"
+},
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/thirdparty/imgui/imgui_tables.cpp.o -c /home/cedric/git/imgui-experiment/thirdparty/imgui/imgui_tables.cpp",
+  "file": "/home/cedric/git/imgui-experiment/thirdparty/imgui/imgui_tables.cpp"
+},
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/thirdparty/imgui/imgui_widgets.cpp.o -c /home/cedric/git/imgui-experiment/thirdparty/imgui/imgui_widgets.cpp",
+  "file": "/home/cedric/git/imgui-experiment/thirdparty/imgui/imgui_widgets.cpp"
+},
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/thirdparty/imgui/imgui_demo.cpp.o -c /home/cedric/git/imgui-experiment/thirdparty/imgui/imgui_demo.cpp",
+  "file": "/home/cedric/git/imgui-experiment/thirdparty/imgui/imgui_demo.cpp"
+},
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/thirdparty/imgui/backends/imgui_impl_glfw.cpp.o -c /home/cedric/git/imgui-experiment/thirdparty/imgui/backends/imgui_impl_glfw.cpp",
+  "file": "/home/cedric/git/imgui-experiment/thirdparty/imgui/backends/imgui_impl_glfw.cpp"
+},
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/thirdparty/imgui/backends/imgui_impl_opengl3.cpp.o -c /home/cedric/git/imgui-experiment/thirdparty/imgui/backends/imgui_impl_opengl3.cpp",
+  "file": "/home/cedric/git/imgui-experiment/thirdparty/imgui/backends/imgui_impl_opengl3.cpp"
+},
+{
+  "directory": "/home/cedric/git/imgui-experiment/build",
+  "command": "/usr/lib/emscripten/em++  @CMakeFiles/imgui-experiment.dir/includes_CXX.rsp  -pthread -g -std=gnu++20 -o CMakeFiles/imgui-experiment.dir/thirdparty/imnodes/imnodes.cpp.o -c /home/cedric/git/imgui-experiment/thirdparty/imnodes/imnodes.cpp",
+  "file": "/home/cedric/git/imgui-experiment/thirdparty/imnodes/imnodes.cpp"
+}
+]
