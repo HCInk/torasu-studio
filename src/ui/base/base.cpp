@@ -19,9 +19,11 @@
 // namespace nodes = ax::NodeEditor;
 #include "../../../thirdparty/imnodes/imnodes.h"
 
+#include "../modules/NodeModule.hpp"
+#include "../modules/ViewerModule.hpp"
+
 namespace tstudio {
 static void main_loop();
-
 
 std::string generateIniWindow(std::string title, int32_t xPos, int32_t yPos, uint32_t width, uint32_t height, std::string dockId = "", size_t tabNo = 0) {
 	return "[Window][" + title + "]\n"
@@ -53,7 +55,6 @@ std::string generateIniCommands() {
 	return iniStr;
 }
 
-
 auto generateTexture(uint32_t texWidth, uint32_t texHeight) {
 	size_t texDataSize = texWidth*texHeight*4;
 
@@ -81,17 +82,12 @@ auto generateTexture(uint32_t texWidth, uint32_t texHeight) {
 	return texDataHoler;
 }
 
-
 namespace {
-static const uint32_t baseTexWidth = 1920;
-static const uint32_t baseTexHeight = 1080;
-static float sizeFactor = 1;
-static uint32_t texWidth = baseTexWidth*sizeFactor;
-static uint32_t texHeight = baseTexHeight*sizeFactor;
 tstudio::TextureId image_texture_id;
-void* image_texture;
 static bool reloadLayout = true;
-static bool reloadTexture = false;
+static NodeModule nodeModule = NodeModule();
+static ViewerModule::ViewerState viewerState;
+static ViewerModule viewerModule = ViewerModule(&viewerState);
 
 static void post_imgui_init(const tstudio::render_hooks::blank_callbacks& callbacks) {
     // Load Fonts
@@ -111,14 +107,12 @@ static void post_imgui_init(const tstudio::render_hooks::blank_callbacks& callba
 
 	ImNodes::CreateContext();
 
-	for (int nodeId = 0; nodeId < 10; nodeId++) {
-		ImVec2 position = ImVec2(nodeId*200.0f+100.0f, 100.0f);
-		ImNodes::SetNodeGridSpacePos(nodeId, position);
-	}
+	auto generated = generateTexture(viewerState.texWidth, viewerState.texHeight);
+	image_texture_id = callbacks.create_texture(viewerState.texWidth, viewerState.texHeight, generated.get());
+	viewerState.image_texture = callbacks.tex_id_to_imgui_id(image_texture_id);
 
-	auto generated = generateTexture(texWidth, texHeight);
-	image_texture_id = callbacks.create_texture(texWidth, texHeight, generated.get());
-	image_texture = callbacks.tex_id_to_imgui_id(image_texture_id);
+	nodeModule.onMount();
+	viewerModule.onMount();
 }
 
 void on_blank(const tstudio::render_hooks::blank_callbacks& callbacks) {
@@ -127,10 +121,10 @@ void on_blank(const tstudio::render_hooks::blank_callbacks& callbacks) {
 		ImGui::LoadIniSettingsFromMemory(iniCommands.c_str());
 		reloadLayout = false;
 	}
-	if (reloadTexture) {
-		auto generated = generateTexture(texWidth, texHeight);
-		callbacks.update_texture(image_texture_id, texWidth, texHeight, generated.get());
-		reloadTexture = false;
+	if (viewerState.reloadTexture) {
+		auto generated = generateTexture(viewerState.texWidth, viewerState.texHeight);
+		callbacks.update_texture(image_texture_id, viewerState.texWidth, viewerState.texHeight, generated.get());
+		viewerState.reloadTexture = false;
 	}
 }
 
@@ -156,119 +150,13 @@ static void main_loop() {
 	static bool show_demo_window = true;
 	static bool show_another_window = true;
 	static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-	static  std::vector<std::pair<int, int>> links;
-	static float someFloat = 0;
-	static int selectNode = -1;
-	static bool nodeOpen = true;
 
 	ImGui::DockSpaceOverViewport(nullptr, 0, nullptr);
 
 	{
-		auto isLinked = [] (int attrId, int* otherLink) {
-			for (auto link : links) {
-				if (link.first == attrId) {
-					*otherLink = link.second;
-					return true;
-				}
-				if (link.second == attrId) {
-					*otherLink = link.first;
-					return true;
-				}
-			}
-			return false;
-		};
 		ImGui::Begin("Node-Editor###node-viewer");
 
-		ImNodes::BeginNodeEditor();
-
-		int attrId = 0;
-		for (int nodeId = 0; nodeId < 10; nodeId++) {
-
-			ImNodes::BeginNode(nodeId);
-
-			ImNodes::BeginNodeTitleBar();
-			ImGui::Checkbox("", &nodeOpen);
-			ImGui::SameLine();
-			ImGui::TextUnformatted("Test Node");
-			ImNodes::EndNodeTitleBar();
-
-			ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkCreationOnSnap);
-			ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
-			if (nodeOpen) {
-				ImVec2 widthSpacer = {150.0, 0.0};
-				ImGui::Dummy(widthSpacer);
-			}
-
-			for (int i = 0; i < 4; i++) {
-				ImNodes::BeginInputAttribute(attrId++);
-				
-				if (nodeOpen) {
-					ImGui::Text("in %i", i);
-					ImGui::SameLine();
-					int linkedTo;
-					if (isLinked(attrId-1, &linkedTo)) {
-						int destNodeId = linkedTo/5;
-						ImGui::Text("[LINKED to %i]", destNodeId);
-						if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(0)) {
-							selectNode = destNodeId;
-						}
-					} else {
-						ImGui::PushItemWidth(100.0f);
-						ImGui::DragFloat("", &someFloat, 0.01, -30.0f, 30.0f, "%.03f");
-						ImGui::PopItemWidth();
-					}
-				}
-				ImNodes::EndInputAttribute();
-
-				auto size = ImGui::GetItemRectSize();
-
-				if (i == 0) {
-					ImNodes::PopAttributeFlag();
-					ImGui::SameLine();
-					ImNodes::BeginOutputAttribute(attrId++);
-					ImNodes::EndOutputAttribute();
-					ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
-				}
-
-				if (nodeOpen) {
-					float addedHeight = std::max(15.0f-size.y, 0.0f);
-					ImGui::SetCursorPosY(ImGui::GetCursorPosY()+addedHeight);
-					// std::cout << "size " << nodeId << "-" << i << ": " << " " << addedHeight << std::endl;
-				}
-			}
-
-			ImNodes::PopAttributeFlag();
-			ImNodes::PopAttributeFlag();
-
-			ImNodes::EndNode();
-		}
-
-		for (size_t i = 0; i < links.size(); ++i) {
-			const std::pair<int, int> p = links[i];
-			ImNodes::Link(i, p.first, p.second);
-		}
-
-		ImNodes::MiniMap();
-		ImNodes::EndNodeEditor();
-		int linkId;
-		if (ImNodes::IsLinkDestroyed(&linkId)) {
-			links.erase(links.begin()+linkId);
-		}
-		int start_attr, end_attr;
-		if (ImNodes::IsLinkCreated(&start_attr, &end_attr)) {
-			links.push_back(std::make_pair(start_attr, end_attr));
-		}
-		if (selectNode >= 0) {
-			ImNodes::ClearNodeSelection();
-			ImNodes::SelectNode(selectNode);
-			ImVec2 selectedPos = ImNodes::GetNodeGridSpacePos(selectNode);
-			selectedPos.x *= -1;
-			selectedPos.y *= -1;
-			selectedPos.x += 200.0;
-			selectedPos.y += 200.0;
-			ImNodes::EditorContextResetPanning(selectedPos);
-			selectNode = -1;
-		}
+		nodeModule.render();
 
 		ImGui::End();
 	}
@@ -310,99 +198,7 @@ static void main_loop() {
 	if (show_another_window)
 	{
 		ImGui::Begin("Viewer###result-viewer", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-		ImGui::Text("Hello from another window!");
-		auto max = ImGui::GetContentRegionMax();
-		max.y -= 70;
-		if (max.y < 0) max.y = 0;
-		float ratio = static_cast<float>(texWidth)/texHeight;
-		float maxWidth = max.y * ratio;
-		float maxHeight = max.x / ratio;
-		float sidePadding = 0;
-		if (maxWidth <= max.x) {
-			sidePadding = (max.x-maxWidth)/2;
-			max.x = maxWidth;
-		} else {
-			max.y = maxHeight;
-		}
-		ImGui::SetCursorPosX(ImGui::GetCursorPosX()+sidePadding);
-		ImGui::Image(image_texture, max);
-		if (!ImGui::IsWindowDocked()) {
-			if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Home))) {
-				ImVec2 veiwportSize = ImGui::GetMainViewport()->Size;
-				ImVec2 defPos = {veiwportSize.x*1/3, veiwportSize.y*1/3};
-				ImVec2 defSize = {veiwportSize.x*1/3, veiwportSize.y*1/3};
-				ImGui::SetWindowPos(defPos);
-				ImGui::SetWindowSize(defSize);
-			}
-			if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-				auto mousePos = ImGui::GetMousePos();
-				auto windowPos = ImGui::GetWindowPos();
-				auto windowSize = ImGui::GetWindowSize();
-				ImVec2 posRel = {
-					(mousePos.x-windowPos.x)/windowSize.x,
-					(mousePos.y-windowPos.y)/windowSize.y,
-				};
-
-				static const float zoomFactor = 1.5;
-
-				float currZoomFactor;
-				
-				if (ImGui::GetIO().KeyShift) {
-					currZoomFactor = zoomFactor;
-				} else {
-					currZoomFactor = 1/zoomFactor;
-				}
-
-				const ImVec2 toAdd = {windowSize.x*(currZoomFactor-1), windowSize.y*(currZoomFactor-1)};
-
-				windowPos.x -= toAdd.x*posRel.x;
-				windowPos.y -= toAdd.y*posRel.y;
-				windowSize.x += toAdd.x;
-				windowSize.y += toAdd.y;
-
-				if (windowSize.x > 100 && windowSize.y > 150) {
-					ImGui::SetWindowPos(windowPos);
-					ImGui::SetWindowSize(windowSize);
-				}
-
-			}
-
-		}
-
-		if (ImGui::Button("Close Me"))
-			show_another_window = false;
-
-		ImGui::SameLine();
-
-		const char* items[] = { "scale x0.25", "scale x0.5", "scale x1", "scale x2", "scale x4"};
-		float factors[] = { 0.25f, 0.5f, 1.0f, 2.0f, 4.0f};
-		static int item_current_idx = 2; // Here we store our selection data as an index.
-		const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
-		ImGui::PushItemWidth(100.0f);
-		if (ImGui::BeginCombo(" ", combo_preview_value))
-		{
-			for (int n = 0; n < IM_ARRAYSIZE(items); n++)
-			{
-				const bool is_selected = (item_current_idx == n);
-				if (ImGui::Selectable(items[n], is_selected)) {
-					item_current_idx = n;
-					sizeFactor = factors[item_current_idx];
-					texWidth = baseTexWidth*sizeFactor;
-					texHeight = baseTexHeight*sizeFactor;
-					reloadTexture = true;
-				}
-
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-				if (is_selected)
-					ImGui::SetItemDefaultFocus();
-			}
-			ImGui::EndCombo();
-		}
-		ImGui::PopItemWidth();
-
-		ImGui::SameLine();
-		ImGui::Text("%u x %u", texWidth, texHeight);
-
+		viewerModule.render();
 
 		ImGui::End();
 	}
