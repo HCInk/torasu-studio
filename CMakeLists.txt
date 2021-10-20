@@ -9,7 +9,7 @@ else()
 	message("Compiling for local")
 endif()
 
-project(imgui-experiment VERSION 0.0.4)
+project(torasu-studio VERSION 0.0.4)
 set(CMAKE_CXX_STANDARD 20)
 
 include_directories(BEFORE ${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui)
