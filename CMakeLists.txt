@@ -20,6 +20,8 @@ endif()
 
 add_executable(torasu-studio 
 	${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/ui/base/base.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/ui/base/glfw_runner.cpp
 	${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui/imgui.cpp
 	${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui/imgui_draw.cpp
 	${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui/imgui_tables.cpp
