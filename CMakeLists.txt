@@ -20,6 +20,8 @@ endif()
 
 add_executable(torasu-studio 
 	${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/state/App.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/state/TreeManager.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/base/base.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/base/glfw_runner.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/modules/NodeModule.cpp
@@ -41,7 +43,8 @@ if (EMSCRIPTEN)
 	configure_file(${CMAKE_CURRENT_LIST_DIR}/src/index.html index.html COPYONLY)
 	# target_link_libraries(torasu-studio glfw GL dl)
 else()
-	target_link_libraries(torasu-studio asan glfw GL dl)
+	set_target_properties(torasu-studio PROPERTIES LINK_FLAGS "-Wl,-rpath,/usr/local/lib")
+	target_link_libraries(torasu-studio asan glfw GL dl torasu torasustd)
 endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 

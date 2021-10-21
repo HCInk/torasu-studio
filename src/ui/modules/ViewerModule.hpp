@@ -23,7 +23,7 @@ private:
 public:
 	ViewerModule(ViewerState* stateRef);
 	~ViewerModule();
-	void render() override;
+	void render(App* instance) override;
 
 };
 

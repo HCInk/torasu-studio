@@ -17,7 +17,7 @@ private:
 public:
 	NodeModule();
 	~NodeModule();
-	void render() override;
+	void render(App* instance) override;
 	void onMount() override;
 
 };

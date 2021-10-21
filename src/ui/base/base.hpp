@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <stdint.h>
 
+#include "../../state/App.hpp"
+
 namespace tstudio {
 typedef size_t TextureId;
 struct render_hooks {
@@ -17,9 +19,15 @@ struct render_hooks {
 	void (*on_blank)(const blank_callbacks&) = nullptr;
 	void (*post_imgui_init)(const blank_callbacks&) = nullptr;
 	void (*pre_imgui_destory)(const blank_callbacks&) = nullptr;
+	void (*final_destory)(void) = nullptr;
 };
 
-void run_base();
+/**
+ * @brief  Run UI
+ * @param  app: Pointer to app-instance (will be managed/freed by this function)
+ */
+void run_base(App* app);
+
 } // namespace tstudio
 
 

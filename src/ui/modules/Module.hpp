@@ -3,10 +3,12 @@
 
 namespace tstudio {
 
+class App;
+
 class Module {
 public:
 	virtual void onMount() {};
-	virtual void render() = 0;
+	virtual void render(App* instance) = 0;
 	virtual ~Module() {}
 };
 

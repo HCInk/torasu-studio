@@ -1,6 +1,8 @@
+#include "state/App.hpp"
 #include "ui/base/base.hpp"
 
 int main(int, char**) {
-	tstudio::run_base();
+	auto* app = new tstudio::App();
+	tstudio::run_base(app);
 	return 0;
 }

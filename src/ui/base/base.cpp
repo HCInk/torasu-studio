@@ -83,6 +83,7 @@ auto generateTexture(uint32_t texWidth, uint32_t texHeight) {
 }
 
 namespace {
+tstudio::App* app = nullptr;
 tstudio::TextureId image_texture_id;
 static bool reloadLayout = true;
 static NodeModule nodeModule = NodeModule();
@@ -133,15 +134,21 @@ static void pre_imgui_destory(const tstudio::render_hooks::blank_callbacks& call
 	ImNodes::DestroyContext();
 }
 
+static void final_destory() {
+	delete app;
+}
+
 
 } // namespace
 
-void run_base() {
+void run_base(App* appPtr) {
+	app = appPtr;
 	render_hooks hooks;
 	hooks.render_frame = main_loop;
 	hooks.on_blank = on_blank;
 	hooks.post_imgui_init = post_imgui_init;
 	hooks.pre_imgui_destory = pre_imgui_destory;
+	hooks.final_destory = final_destory;
 	glfw_run(hooks);
 }
 
@@ -156,7 +163,7 @@ static void main_loop() {
 	{
 		ImGui::Begin("Node-Editor###node-viewer");
 
-		nodeModule.render();
+		nodeModule.render(app);
 
 		ImGui::End();
 	}
@@ -198,7 +205,7 @@ static void main_loop() {
 	if (show_another_window)
 	{
 		ImGui::Begin("Viewer###result-viewer", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-		viewerModule.render();
+		viewerModule.render(app);
 
 		ImGui::End();
 	}

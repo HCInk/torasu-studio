@@ -9,7 +9,7 @@ ViewerModule::ViewerModule(ViewerState* stateRef)
 
 ViewerModule::~ViewerModule() {}
 
-void ViewerModule::render() {
+void ViewerModule::render(App* instance) {
 	ImGui::Text("Hello from another window!");
 	auto max = ImGui::GetContentRegionMax();
 	max.y -= 70;

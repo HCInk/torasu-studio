@@ -16,7 +16,7 @@ void NodeModule::onMount() {
 	}
 }
 
-void NodeModule::render() {
+void NodeModule::render(App* instance) {
 	ImNodes::BeginNodeEditor();
 
 	int attrId = 0;
