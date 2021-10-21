@@ -103,7 +103,7 @@ static void glfw_error_callback(int error, const char* description) {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-static const tstudio::render_hooks* hooks = nullptr;
+static tstudio::render_hooks hooks;
 static GLFWwindow* window = nullptr;
 static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 static tstudio::render_hooks::blank_callbacks blank_callbacks = {
@@ -119,7 +119,7 @@ static tstudio::render_hooks::blank_callbacks blank_callbacks = {
 void render_frame() {
 	
 
-	hooks->on_blank(blank_callbacks);
+	hooks.on_blank(blank_callbacks);
 
 	// Poll and handle events (inputs, window resize, etc.)
 	// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -132,7 +132,7 @@ void render_frame() {
 	ImGui_ImplGraphics_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	hooks->render_frame();
+	hooks.render_frame();
 
 	// Rendering
 	ImGui::Render();
@@ -188,7 +188,7 @@ void render_frame() {
 namespace tstudio {
 
 void glfw_run(const render_hooks& setHooks) {
-	hooks = &setHooks;
+	hooks = setHooks;
 	std::cout << "Spwan" << std::endl;
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -278,7 +278,7 @@ void glfw_run(const render_hooks& setHooks) {
 
 	std::cout << "Preparing content..." << std::endl;
 
-	hooks->post_imgui_init(blank_callbacks);
+	hooks.post_imgui_init(blank_callbacks);
 
 #ifdef __EMSCRIPTEN__ // Web
 	std::cout << "Start web-loop." << std::endl;
@@ -291,11 +291,8 @@ void glfw_run(const render_hooks& setHooks) {
     while (!glfwWindowShouldClose(window)) {
 		render_frame();
     }
-#endif
 
-	// ImNodes::DestroyContext();
-
-	hooks->pre_imgui_destory(blank_callbacks);
+	hooks.pre_imgui_destory(blank_callbacks);
 
 	// Cleanup
 	ImGui_ImplGraphics_Shutdown();
@@ -304,6 +301,7 @@ void glfw_run(const render_hooks& setHooks) {
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
+#endif
 }
 
 } // namespace tstudio
