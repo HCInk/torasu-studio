@@ -13,8 +13,11 @@ public:
 	TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements = {});
 	~TreeManager();
 
+	class ElementNode;
+
 	void addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr);
 	void applyUpdates();
+	std::vector<ElementNode*> getManagedNodes();
 
 	class ElementNode {
 	private:
@@ -47,6 +50,8 @@ public:
 		/* const */ torasu::DataResource* getCurrentData();
 		void putSlot(const char* key, ElementNode* node);
 		torasu::DataResource* getDataForModification();
+
+		torasu::UserLabel getLabel();
 
 		friend TreeManager;
 	};

@@ -8,12 +8,13 @@ namespace tstudio {
 
 class NodeModule : public Module {
 private:
+	struct State;
+	State* state;
 	std::vector<std::pair<int, int>> links;
 	float someFloat = 0;
 	int selectNode = -1;
 	bool nodeOpen = true;
 
-	bool isLinked(int attrId, int* otherLink); 
 public:
 	NodeModule();
 	~NodeModule();

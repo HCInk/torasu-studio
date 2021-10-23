@@ -58,4 +58,12 @@ App::~App() {
 	delete state;
 }
 
+TreeManager* App::getTreeManager() {
+	return state->treeManager;
+}
+
+torasu::Element* App::getRootElement() {
+	return state->root;
+}
+
 } // namespace tstudio

@@ -30,6 +30,14 @@ void TreeManager::applyUpdates() {
 	pendingUpdates.clear();
 }
 
+std::vector<TreeManager::ElementNode*> TreeManager::getManagedNodes() {
+	std::vector<ElementNode*> elementList;
+	for (auto managedElement : managedElements) {
+		elementList.push_back(managedElement.second);
+	}
+	return elementList;
+}
+
 const torasu::ElementFactory* TreeManager::getFactoryForElement(/* const */ torasu::Element* element) {
 	auto found = factories.find(element->getType().str);
 	return found != factories.end() ? found->second : nullptr;
@@ -64,7 +72,7 @@ TreeManager::ElementNode::ElementNode(TreeManager* manager, torasu::Element* ele
 			slot.ownedByNode = false;
 			slot.mounted = foundStored;
 		} else {
-			slot.ownedByNode = false;
+			slot.ownedByNode = true;
 			slot.mounted = new ElementNode(manager, elemInSlot, manager->getFactoryForElement(elemInSlot));
 		}
 	}
@@ -138,6 +146,15 @@ void TreeManager::ElementNode::applyUpdates() {
 	updatePending = false;
 }
 
+torasu::UserLabel TreeManager::ElementNode::getLabel() {
+	if (elementFactory != nullptr) {
+		return elementFactory->getLabel();
+	} else {
+		torasu::UserLabel label;
+		label.name = element->getType().str;
+		return label;
+	}
+}
 
 TreeManager::ElementNode::~ElementNode() {
 	for (auto slot : slots) {
