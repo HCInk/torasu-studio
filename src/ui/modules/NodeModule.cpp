@@ -191,7 +191,7 @@ void NodeModule::render(App* instance) {
 				ImNodes::BeginInputAttribute(attrEntry.first);
 				
 				if (nodeOpen) {
-					ImGui::Text(slotDescriptor->label.name);
+					ImGui::Text("%s", slotDescriptor->label.name);
 					ImGui::SameLine();
 					if (connectedNode != nullptr) {
 						ImGui::Text("[%s]", connectedNode->getLabel().name);

@@ -107,10 +107,10 @@ static tstudio::render_hooks hooks;
 static GLFWwindow* window = nullptr;
 static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 static tstudio::render_hooks::blank_callbacks blank_callbacks = {
-	create_texture: tstudio::opengl_textures_create_texture,
-	update_texture: tstudio::opengl_textures_update_texture,
-	destory_texture: tstudio::opengl_textures_destory_texture,
-	tex_id_to_imgui_id: tstudio::opengl_textures_tex_id_to_imgui_id
+	.create_texture = tstudio::opengl_textures_create_texture,
+	.update_texture = tstudio::opengl_textures_update_texture,
+	.destory_texture = tstudio::opengl_textures_destory_texture,
+	.tex_id_to_imgui_id = tstudio::opengl_textures_tex_id_to_imgui_id
 	// TextureId (*create_texture)(uint32_t texWidth, uint32_t texHeight, uint8_t* data);
 	// void (*update_texture)(TextureId id, uint32_t texWidth, uint32_t texHeight, uint8_t* data);
 	// void (*destory_texture)(TextureId id);
