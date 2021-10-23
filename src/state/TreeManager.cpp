@@ -97,7 +97,7 @@ const std::map<std::string, TreeManager::ElementNode::Slot>* TreeManager::Elemen
 }
 
 torasu::DataResource* TreeManager::ElementNode::getDataForModification() {
-	if (modifiedData != nullptr) {
+	if (modifiedData == nullptr) {
 		const torasu::DataResource* currentData = element->getData();
 		modifiedData = currentData->clone();
 	}
@@ -144,6 +144,10 @@ void TreeManager::ElementNode::applyUpdates() {
 
 	// Reset pending-state
 	updatePending = false;
+}
+
+torasu::Identifier TreeManager::ElementNode::getType() {
+	return element->getType();
 }
 
 torasu::UserLabel TreeManager::ElementNode::getLabel() {

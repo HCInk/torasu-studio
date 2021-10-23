@@ -3,6 +3,8 @@
 #include <map>
 // #include <iostream>
 
+#include <torasu/std/Dnum.hpp>
+
 #include "../../../thirdparty/imnodes/imnodes.h"
 #include "../../state/App.hpp"
 #include "../../state/TreeManager.hpp"
@@ -118,14 +120,34 @@ NodeModule::~NodeModule() {
 
 void NodeModule::onMount() {}
 
+namespace {
+
+void renderDataEditor(TreeManager::ElementNode* node) {
+	auto* currData = node->getCurrentData();
+	if (currData == nullptr) return;
+
+	if (node->getType() == "STD::RNUM") {
+		auto* numData = dynamic_cast<torasu::tstd::Dnum*>(currData);
+		if (numData == nullptr) return;
+		float value = numData->getNum();
+		ImGui::PushItemWidth(100.0f);
+		if (ImGui::DragFloat("Value", &value, 0.01, -30.0f, 30.0f, "%.03f")) {
+			(*dynamic_cast<torasu::tstd::Dnum*>(node->getDataForModification())) = value;
+		}
+		ImGui::PopItemWidth();
+	}
+}
+	
+} // namespace
+
 void NodeModule::render(App* instance) {
 	state->remap(instance);
 
 	ImNodes::BeginNodeEditor();
 
 	for (auto nodeEntry : state->objMap) {
-		auto* node = nodeEntry.first;
-		auto& nodeIds = *nodeEntry.second;
+		TreeManager::ElementNode* node = nodeEntry.first;
+		State::NodeObj& nodeIds = *nodeEntry.second;
 
 		ImNodes::BeginNode(nodeIds.nodeId);
 
@@ -138,8 +160,13 @@ void NodeModule::render(App* instance) {
 		if (nodeOpen) {
 			ImVec2 widthSpacer = {150.0, 0.0};
 			ImGui::Dummy(widthSpacer);
+
+			// Data stuff
+			renderDataEditor(node);
 		}
 
+		
+		// Attribute / Slot stuff
 		if (!nodeIds.attributeIds.empty()) {
 			auto* slots = node->getSlots();
 			size_t attrIndex = 0;
@@ -167,7 +194,7 @@ void NodeModule::render(App* instance) {
 					ImGui::Text(slotDescriptor->label.name);
 					ImGui::SameLine();
 					if (connectedNode != nullptr) {
-						ImGui::Text("[LINKED to %s]", connectedNode->getLabel().name);
+						ImGui::Text("[%s]", connectedNode->getLabel().name);
 						if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(0)) {
 							if (connectedNodeId >= 0) {
 								selectNode = connectedNodeId;

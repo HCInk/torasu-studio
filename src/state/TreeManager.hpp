@@ -51,6 +51,7 @@ public:
 		void putSlot(const char* key, ElementNode* node);
 		torasu::DataResource* getDataForModification();
 
+		torasu::Identifier getType();
 		torasu::UserLabel getLabel();
 
 		friend TreeManager;
