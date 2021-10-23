@@ -7,7 +7,7 @@ class Element;
 
 
 namespace tstudio {
-
+struct blank_callbacks;
 class TreeManager;
 
 class App {
@@ -17,6 +17,8 @@ private:
 public:
 	App();
 	~App();
+
+	void onBlank(const tstudio::blank_callbacks& callbacks);
 
 	TreeManager* getTreeManager();
 	torasu::Element* getRootElement();

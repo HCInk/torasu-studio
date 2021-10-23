@@ -18,6 +18,8 @@ public:
 	void addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr);
 	void applyUpdates();
 	std::vector<ElementNode*> getManagedNodes();
+	typedef size_t version_t;
+	version_t getVersion();
 
 	class ElementNode {
 	private:
@@ -53,6 +55,7 @@ public:
 
 		torasu::Identifier getType();
 		torasu::UserLabel getLabel();
+		bool isUpdatePending();
 
 		friend TreeManager;
 	};
@@ -62,6 +65,7 @@ private:
 	std::vector<ElementNode*> pendingUpdates;
 	std::map<const torasu::Element*, ElementNode*> managedElements;
 	std::map<std::string, const torasu::ElementFactory*> factories;
+	version_t version = 0;
 
 protected:
 	const torasu::ElementFactory* getFactoryForElement(/* const */ torasu::Element* element);

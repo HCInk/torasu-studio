@@ -106,7 +106,7 @@ static void glfw_error_callback(int error, const char* description) {
 static tstudio::render_hooks hooks;
 static GLFWwindow* window = nullptr;
 static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-static tstudio::render_hooks::blank_callbacks blank_callbacks = {
+static tstudio::blank_callbacks blank_callbacks_instance = {
 	.create_texture = tstudio::opengl_textures_create_texture,
 	.update_texture = tstudio::opengl_textures_update_texture,
 	.destory_texture = tstudio::opengl_textures_destory_texture,
@@ -119,7 +119,7 @@ static tstudio::render_hooks::blank_callbacks blank_callbacks = {
 void render_frame() {
 	
 
-	hooks.on_blank(blank_callbacks);
+	hooks.on_blank(blank_callbacks_instance);
 
 	// Poll and handle events (inputs, window resize, etc.)
 	// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -278,7 +278,7 @@ void glfw_run(const render_hooks& setHooks) {
 
 	std::cout << "Preparing content..." << std::endl;
 
-	hooks.post_imgui_init(blank_callbacks);
+	hooks.post_imgui_init(blank_callbacks_instance);
 
 #ifdef __EMSCRIPTEN__ // Web
 	std::cout << "Start web-loop." << std::endl;
@@ -292,7 +292,7 @@ void glfw_run(const render_hooks& setHooks) {
 		render_frame();
     }
 
-	hooks.pre_imgui_destory(blank_callbacks);
+	hooks.pre_imgui_destory(blank_callbacks_instance);
 
 	// Cleanup
 	ImGui_ImplGraphics_Shutdown();

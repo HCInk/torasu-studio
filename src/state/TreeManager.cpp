@@ -24,10 +24,13 @@ void TreeManager::addNode(torasu::Element* element, const torasu::ElementFactory
 }
 
 void TreeManager::applyUpdates() {
-	for (auto* toUpdate : pendingUpdates) {
-		toUpdate->applyUpdates();
+	if (!pendingUpdates.empty()) {
+		for (auto* toUpdate : pendingUpdates) {
+			toUpdate->applyUpdates();
+		}
+		pendingUpdates.clear();
+		version++;
 	}
-	pendingUpdates.clear();
 }
 
 std::vector<TreeManager::ElementNode*> TreeManager::getManagedNodes() {
@@ -36,6 +39,10 @@ std::vector<TreeManager::ElementNode*> TreeManager::getManagedNodes() {
 		elementList.push_back(managedElement.second);
 	}
 	return elementList;
+}
+
+TreeManager::version_t TreeManager::getVersion() {
+	return version;
 }
 
 const torasu::ElementFactory* TreeManager::getFactoryForElement(/* const */ torasu::Element* element) {
@@ -158,6 +165,10 @@ torasu::UserLabel TreeManager::ElementNode::getLabel() {
 		label.name = element->getType().str;
 		return label;
 	}
+}
+
+bool TreeManager::ElementNode::isUpdatePending() {
+	return updatePending;
 }
 
 TreeManager::ElementNode::~ElementNode() {

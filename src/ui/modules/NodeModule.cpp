@@ -1,15 +1,20 @@
 #include "NodeModule.hpp"
 
 #include <map>
-// #include <iostream>
 
+#include <imgui_internal.h>
 #include <torasu/std/Dnum.hpp>
 
 #include "../../../thirdparty/imnodes/imnodes.h"
 #include "../../state/App.hpp"
 #include "../../state/TreeManager.hpp"
 
+#define DEBUG_LOG true
 #define DO_SNAP false
+
+#if DEBUG_LOG
+#include <iostream>
+#endif
 namespace tstudio {
 
 struct NodeModule::State {
@@ -18,6 +23,7 @@ struct NodeModule::State {
 		TreeManager::ElementNode* elemNode;
 		node_id nodeId;
 		std::map<node_id, std::string> attributeIds; 
+		std::set<NodeObj*> ownedNodes; 
 	};
 
 	node_id idCounter = 0;
@@ -25,20 +31,26 @@ struct NodeModule::State {
 	std::map<TreeManager::ElementNode*, NodeObj*> objMap;
 	std::map<node_id, NodeObj*> idMap;
 	bool needsRemap = true;
+	tstudio::TreeManager::version_t treeVersion;
 
 	bool removeNode(TreeManager::ElementNode* node) {
 		auto found = objMap.find(node);
 		if (found == objMap.end()) return false;
 		NodeObj* toRemove = found->second;
-		for (auto attrIds : toRemove->attributeIds) {
-			idMap.erase(attrIds.first);
-		}
-		idMap.erase(toRemove->nodeId);
-		delete toRemove;
+		removeNode(toRemove);
 		return true;
 	}
 
-	void updateNode(TreeManager::ElementNode* node) {
+	void removeNode(NodeObj* toRemove) {
+		for (auto attrIds : toRemove->attributeIds) {
+			idMap.erase(attrIds.first);
+		}
+		objMap.erase(toRemove->elemNode);
+		idMap.erase(toRemove->nodeId);
+		delete toRemove;
+	}
+
+	NodeObj* updateNode(TreeManager::ElementNode* node) {
 		auto found = objMap.find(node);
 		NodeObj* currNode;
 		if (found != objMap.end()) {
@@ -47,6 +59,9 @@ struct NodeModule::State {
 			currNode = new NodeObj(); 
 			currNode->elemNode = node;
 			currNode->nodeId = idCounter++;
+			// XXX To be more easy viewable
+			ImVec2 pos(100.0f, 100.0f+100.0f*objMap.size());
+			ImNodes::SetNodeGridSpacePos(currNode->nodeId, pos);
 			objMap[node] = currNode;
 			idMap[currNode->nodeId] = currNode;
 		}
@@ -78,10 +93,29 @@ struct NodeModule::State {
 		}
 
 		size_t idIndex = 0;
+		std::set<NodeObj*> nolongerOwned = currNode->ownedNodes;
 		for (auto slot : slotMap) {
+			// Set attribute-ids
 			attributeIds[ids[idIndex]] = slot.first;
 			idIndex++;
+
+			// Managed owned nodes
+			if (slot.second.ownedByNode) {
+				NodeObj* ownedObj = updateNode(slot.second.mounted);
+				auto found = nolongerOwned.find(ownedObj);
+				if (found != nolongerOwned.end()) { // Already existed before
+					nolongerOwned.erase(found);
+				} else { // New
+					currNode->ownedNodes.insert(ownedObj);
+				}
+			}
 		}
+		for (auto* toRemove : nolongerOwned) {
+			currNode->ownedNodes.erase(toRemove);
+			removeNode(toRemove);
+		}
+
+		return currNode;
 	}
 
 	~State() {
@@ -92,22 +126,27 @@ struct NodeModule::State {
 
 	void mapNode(TreeManager::ElementNode* node) {
 		updateNode(node);
-		for (auto slot : *node->getSlots()) {
-			if (slot.second.ownedByNode) {
-				updateNode(slot.second.mounted);
-			}
-		}
 	}
 
 	void remap(App* instance) {
-		if (!needsRemap) return;
-
 		auto* treeManager = instance->getTreeManager();
-
+		auto newTreeVersion = treeManager->getVersion();
+		if (!needsRemap && treeVersion == newTreeVersion) return;
+#if DEBUG_LOG
+		auto bench = std::chrono::steady_clock::now();
+		std::cout << "Node-View: Remap..."
+			" (" << (needsRemap ? "REINIT - " : "") << std::to_string(treeVersion) << ">>" << std::to_string(newTreeVersion)  << ")"<< std::endl;
+#endif
 		for (auto* node : treeManager->getManagedNodes()) {
 			mapNode(node);
 		}
 
+#if DEBUG_LOG
+		std::cout << "Node-View: Remap done"
+			" (" << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - bench).count() << "µs)"<< std::endl;
+
+#endif
+		treeVersion = newTreeVersion;
 		needsRemap = false;
 	}
 };
@@ -154,7 +193,28 @@ void NodeModule::render(App* instance) {
 		ImNodes::BeginNodeTitleBar();
 		ImGui::Checkbox("", &nodeOpen);
 		ImGui::SameLine();
-		ImGui::TextUnformatted(node->getLabel().name);
+		ImGui::Text("%s [%i]", node->getLabel().name, nodeIds.nodeId);
+		if (nodeIds.elemNode->isUpdatePending()) {
+			ImGui::SameLine();
+			State::node_id hoveredNode;
+			ImVec2 circlePadding(0.0f, 2.0f);
+			float circleSize = 11.0f;
+			ImDrawList* drawList = ImGui::GetWindowDrawList();
+			ImGuiWindow* window = ImGui::GetCurrentWindow();
+			if (!window->SkipItems) {
+				auto cursorPos = window->DC.CursorPos; // ImGui::GetCursorPos();
+				ImVec2 endPos(cursorPos.x + circleSize + circlePadding.x*2, cursorPos.y + circleSize + circlePadding.y*2);
+				ImVec2 center(cursorPos.x + circleSize/2 + circlePadding.x, cursorPos.y + circleSize/2 + circlePadding.y);
+				ImRect bb(cursorPos, endPos);
+				ImGui::Dummy(ImVec2(circleSize,circleSize));
+				// ImGui::ItemSize(bb);
+				drawList->AddCircleFilled(center, circleSize/2, IM_COL32(255, 100, 100, 255));
+				// drawList->AddCircle(center, circleSize/2, IM_COL32(255, 255, 255, 255), 0, 1.5f);
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Applying changes...");
+				}
+			}
+		}
 		ImNodes::EndNodeTitleBar();
 
 		if (nodeOpen) {
@@ -175,20 +235,23 @@ void NodeModule::render(App* instance) {
 #endif
 			ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
 			for (auto attrEntry : nodeIds.attributeIds) {
-				State::node_id connectedNodeId = -1;
 				TreeManager::ElementNode* connectedNode = nullptr;
 				const torasu::ElementFactory::SlotDescriptor* slotDescriptor = nullptr;
+				bool ownedByNode = false;
 				auto foundSlot = slots->find(attrEntry.second);
 				if (foundSlot != slots->end()) {
 					connectedNode = foundSlot->second.mounted;
 					slotDescriptor = foundSlot->second.descriptor;
-					
-					auto found = state->objMap.find(connectedNode);
-					if (found != state->objMap.end()) {
-						connectedNodeId = found->second->nodeId;
-					}
+					ownedByNode = foundSlot->second.ownedByNode;
 				}
-				ImNodes::BeginInputAttribute(attrEntry.first);
+				if (ownedByNode) {
+					ImNodes::PushColorStyle(
+  						ImNodesCol_Pin, IM_COL32(200, 100, 100, 255));
+					ImNodes::BeginInputAttribute(attrEntry.first, ImNodesPinShape_QuadFilled);
+					ImNodes::PopColorStyle();
+				} else {
+					ImNodes::BeginInputAttribute(attrEntry.first, ImNodesPinShape_CircleFilled);
+				}
 				
 				if (nodeOpen) {
 					ImGui::Text("%s", slotDescriptor->label.name);
@@ -196,8 +259,9 @@ void NodeModule::render(App* instance) {
 					if (connectedNode != nullptr) {
 						ImGui::Text("[%s]", connectedNode->getLabel().name);
 						if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(0)) {
-							if (connectedNodeId >= 0) {
-								selectNode = connectedNodeId;
+							auto foundConnected = state->objMap.find(connectedNode);
+							if (foundConnected != state->objMap.end()) {
+								selectNode = foundConnected->second->nodeId;
 							}
 						}
 					} else {
@@ -266,7 +330,9 @@ void NodeModule::render(App* instance) {
 
 	State::node_id linkReciever;
 	if (ImNodes::IsLinkDestroyed(&linkReciever)) {
-		// std::cout << "Destory " << linkReciever << std::endl;
+#if DEBUG_LOG
+		std::cout << "Node-View: Destory link " << linkReciever << std::endl;
+#endif
 		auto foundNode = state->idMap.find(linkReciever);
 		if (foundNode != state->idMap.end()) {
 			auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
@@ -281,7 +347,9 @@ void NodeModule::render(App* instance) {
 	}
 	State::node_id linkedNode;
 	if (ImNodes::IsLinkCreated(&linkedNode, &linkReciever)) {
-		// std::cout << "Create " << linkedNode << "-" << linkReciever << std::endl;
+#if DEBUG_LOG
+		std::cout << "Node-View: Create link " << linkedNode << "-" << linkReciever << std::endl;
+#endif
 		auto foundLinked = state->idMap.find(linkedNode);
 		auto foundNode = state->idMap.find(linkReciever);
 		if (foundLinked != state->idMap.end() || foundNode != state->idMap.end()) {

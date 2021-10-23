@@ -58,6 +58,10 @@ App::~App() {
 	delete state;
 }
 
+void App::onBlank(const tstudio::blank_callbacks& callbacks) {
+	state->treeManager->applyUpdates();
+}
+
 TreeManager* App::getTreeManager() {
 	return state->treeManager;
 }

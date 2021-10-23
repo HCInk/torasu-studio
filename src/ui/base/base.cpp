@@ -90,7 +90,7 @@ static NodeModule nodeModule = NodeModule();
 static ViewerModule::ViewerState viewerState;
 static ViewerModule viewerModule = ViewerModule(&viewerState);
 
-static void post_imgui_init(const tstudio::render_hooks::blank_callbacks& callbacks) {
+static void post_imgui_init(const tstudio::blank_callbacks& callbacks) {
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
     // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
@@ -116,12 +116,15 @@ static void post_imgui_init(const tstudio::render_hooks::blank_callbacks& callba
 	viewerModule.onMount();
 }
 
-void on_blank(const tstudio::render_hooks::blank_callbacks& callbacks) {
+void on_blank(const tstudio::blank_callbacks& callbacks) {
 	if (reloadLayout) {
 		std::string iniCommands = generateIniCommands();
 		ImGui::LoadIniSettingsFromMemory(iniCommands.c_str());
 		reloadLayout = false;
 	}
+	
+	app->onBlank(callbacks);
+
 	if (viewerState.reloadTexture) {
 		auto generated = generateTexture(viewerState.texWidth, viewerState.texHeight);
 		callbacks.update_texture(image_texture_id, viewerState.texWidth, viewerState.texHeight, generated.get());
@@ -129,7 +132,7 @@ void on_blank(const tstudio::render_hooks::blank_callbacks& callbacks) {
 	}
 }
 
-static void pre_imgui_destory(const tstudio::render_hooks::blank_callbacks& callbacks) {
+static void pre_imgui_destory(const tstudio::blank_callbacks& callbacks) {
 	callbacks.destory_texture(image_texture_id);
 	ImNodes::DestroyContext();
 }
