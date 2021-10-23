@@ -2,7 +2,7 @@
 #define SRC_STATE_APP_HPP_
 
 namespace torasu {
-class Element;
+class Renderable;
 } // namespace torasu
 
 
@@ -14,6 +14,7 @@ class App {
 private:
 	struct State;
 	State* state;
+
 public:
 	App();
 	~App();
@@ -21,7 +22,9 @@ public:
 	void onBlank(const tstudio::blank_callbacks& callbacks);
 
 	TreeManager* getTreeManager();
-	torasu::Element* getRootElement();
+	torasu::Renderable* getRootElement();
+
+	double currentNumber = 0;
 };
 	
 } // namespace tstudio

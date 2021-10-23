@@ -23,14 +23,16 @@ void TreeManager::addNode(torasu::Element* element, const torasu::ElementFactory
 	managedElements[element] = new TreeManager::ElementNode(this, element, factory);
 }
 
+bool TreeManager::hasUpdates() {
+	return !pendingUpdates.empty();
+}
+
 void TreeManager::applyUpdates() {
-	if (!pendingUpdates.empty()) {
-		for (auto* toUpdate : pendingUpdates) {
-			toUpdate->applyUpdates();
-		}
-		pendingUpdates.clear();
-		version++;
+	for (auto* toUpdate : pendingUpdates) {
+		toUpdate->applyUpdates();
 	}
+	pendingUpdates.clear();
+	version++;
 }
 
 std::vector<TreeManager::ElementNode*> TreeManager::getManagedNodes() {

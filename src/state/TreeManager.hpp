@@ -16,6 +16,7 @@ public:
 	class ElementNode;
 
 	void addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr);
+	bool hasUpdates();
 	void applyUpdates();
 	std::vector<ElementNode*> getManagedNodes();
 	typedef size_t version_t;

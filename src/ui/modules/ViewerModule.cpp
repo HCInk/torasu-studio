@@ -1,5 +1,7 @@
 #include "ViewerModule.hpp"
 
+#include "../../state/App.hpp"
+
 #include <imgui.h>
 
 namespace tstudio {
@@ -10,7 +12,7 @@ ViewerModule::ViewerModule(ViewerState* stateRef)
 ViewerModule::~ViewerModule() {}
 
 void ViewerModule::render(App* instance) {
-	ImGui::Text("Hello from another window!");
+	ImGui::Text("Current Number: %f", instance->currentNumber);
 	auto max = ImGui::GetContentRegionMax();
 	max.y -= 70;
 	if (max.y < 0) max.y = 0;
