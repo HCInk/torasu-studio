@@ -235,6 +235,7 @@ void NodeModule::render(App* instance) {
 
 	ImNodes::MiniMap();
 	ImNodes::EndNodeEditor();
+	ImVec2 editorSize = ImGui::GetItemRectSize();
 
 	State::node_id linkReciever;
 	if (ImNodes::IsLinkDestroyed(&linkReciever)) {
@@ -274,8 +275,8 @@ void NodeModule::render(App* instance) {
 		ImVec2 selectedPos = ImNodes::GetNodeGridSpacePos(selectNode);
 		selectedPos.x *= -1;
 		selectedPos.y *= -1;
-		selectedPos.x += 200.0;
-		selectedPos.y += 200.0;
+		selectedPos.x += editorSize.x/2-70;
+		selectedPos.y += editorSize.y/2-50;
 		ImNodes::EditorContextResetPanning(selectedPos);
 		selectNode = -1;
 	}
