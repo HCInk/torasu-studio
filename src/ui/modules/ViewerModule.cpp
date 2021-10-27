@@ -1,6 +1,8 @@
 #include "ViewerModule.hpp"
 
 #include "../../state/App.hpp"
+#include "../../state/monitors/Monitor.hpp"
+#include "../../state/monitors/NumberMonitor.hpp"
 
 #include <imgui.h>
 
@@ -12,7 +14,8 @@ ViewerModule::ViewerModule(ViewerState* stateRef)
 ViewerModule::~ViewerModule() {}
 
 void ViewerModule::render(App* instance) {
-	ImGui::Text("Current Number: %f", instance->currentNumber);
+	NumberMonitor* numMon = dynamic_cast<NumberMonitor*>(instance->getMainMonitor()->getMonitorImplementation());
+	ImGui::Text("Current Number: %f", numMon->getCurrentNumber().getNum());
 	auto max = ImGui::GetContentRegionMax();
 	max.y -= 70;
 	if (max.y < 0) max.y = 0;

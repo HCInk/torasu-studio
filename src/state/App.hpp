@@ -9,6 +9,7 @@ class Renderable;
 namespace tstudio {
 struct blank_callbacks;
 class TreeManager;
+class Monitor;
 
 class App {
 private:
@@ -23,6 +24,7 @@ public:
 
 	TreeManager* getTreeManager();
 	torasu::Renderable* getRootElement();
+	Monitor* getMainMonitor();
 
 	double currentNumber = 0;
 };
