@@ -59,10 +59,11 @@ App::App() {
 	auto* num2 = new torasu::tstd::Rnum(2.0);
 	auto* mul1 = new torasu::tstd::Rmultiply(num1, num2);
 	auto* mul2 = new torasu::tstd::Rmultiply(mul1, 10);
+	auto* sub1 = new torasu::tstd::Rsubtract(mul2, 20);
 
-	state->root = mul2;
+	state->root = sub1;
 	state->treeManager = new TreeManager(state->elementFactories, 
-		{num1, num2, mul1, mul2});
+		{num1, num2, mul1, mul2, sub1});
 
 	state->runner = std::unique_ptr<torasu::tstd::EIcore_runner>(new torasu::tstd::EIcore_runner((size_t)1));
 	state->runnerInterface = std::unique_ptr<torasu::ExecutionInterface>(state->runner->createInterface());

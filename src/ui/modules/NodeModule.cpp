@@ -254,7 +254,14 @@ void NodeModule::render(App* instance) {
 				}
 				
 				if (nodeOpen) {
-					ImGui::Text("%s", slotDescriptor->label.name);
+					if (slotDescriptor != nullptr) {
+						ImGui::Text("%s", slotDescriptor->label.name);
+						if (slotDescriptor->label.description != nullptr && ImGui::IsItemHovered()) {
+							ImGui::SetTooltip("%s", slotDescriptor->label.description);
+						}
+					} else {
+						ImGui::Text("%s", attrEntry.second.c_str());
+					}
 					ImGui::SameLine();
 					if (connectedNode != nullptr) {
 						ImGui::Text("[%s]", connectedNode->getLabel().name);
