@@ -55,40 +55,12 @@ std::string generateIniCommands() {
 	return iniStr;
 }
 
-auto generateTexture(uint32_t texWidth, uint32_t texHeight) {
-	size_t texDataSize = texWidth*texHeight*4;
-
-	std::unique_ptr<uint8_t, std::default_delete<uint8_t[]>> texDataHoler(new uint8_t[texDataSize]);
-
-	uint8_t* texData = texDataHoler.get();
-
-	size_t i = 0;
-	for (int32_t y = 0; y < texHeight; y++) {
-
-		for (int32_t x = 0; x < texWidth; x++) {
-			texData[i] = y;
-			i++;
-			texData[i] = x;
-			i++;
-			texData[i] = x*y;
-			// texData[i] = (x-y)-0xFF*(std::floor(static_cast<float>(x-y)/0xFF)) > 0x88 ? 0xFF : 0x00;
-			i++;
-			texData[i] = 0xFF;
-			i++;
-		}
-
-	}
-
-	return texDataHoler;
-}
-
 namespace {
 tstudio::App* app = nullptr;
 tstudio::TextureId image_texture_id;
 static bool reloadLayout = true;
 static NodeModule nodeModule = NodeModule();
-static ViewerModule::ViewerState viewerState;
-static ViewerModule viewerModule = ViewerModule(&viewerState);
+static ViewerModule viewerModule = ViewerModule();
 
 static void post_imgui_init(const tstudio::blank_callbacks& callbacks) {
     // Load Fonts
@@ -108,10 +80,6 @@ static void post_imgui_init(const tstudio::blank_callbacks& callbacks) {
 
 	ImNodes::CreateContext();
 
-	auto generated = generateTexture(viewerState.texWidth, viewerState.texHeight);
-	image_texture_id = callbacks.create_texture(viewerState.texWidth, viewerState.texHeight, generated.get());
-	viewerState.image_texture = callbacks.tex_id_to_imgui_id(image_texture_id);
-
 	nodeModule.onMount();
 	viewerModule.onMount();
 }
@@ -125,11 +93,7 @@ void on_blank(const tstudio::blank_callbacks& callbacks) {
 	
 	app->onBlank(callbacks);
 
-	if (viewerState.reloadTexture) {
-		auto generated = generateTexture(viewerState.texWidth, viewerState.texHeight);
-		callbacks.update_texture(image_texture_id, viewerState.texWidth, viewerState.texHeight, generated.get());
-		viewerState.reloadTexture = false;
-	}
+	viewerModule.onBlank(app, callbacks);
 }
 
 static void pre_imgui_destory(const tstudio::blank_callbacks& callbacks) {

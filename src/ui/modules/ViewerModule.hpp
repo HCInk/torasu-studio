@@ -3,26 +3,22 @@
 
 #include <stdint.h>
 
+#include "../base/base.hpp"
 #include "Module.hpp"
 
 namespace tstudio {
 
 class ViewerModule : public Module {
-public:
-	struct ViewerState {
-		static const uint32_t baseTexWidth = 1920;
-		static const uint32_t baseTexHeight = 1080;
-		float sizeFactor = 1;
-		uint32_t texWidth = baseTexWidth*sizeFactor;
-		uint32_t texHeight = baseTexHeight*sizeFactor;
-		void* image_texture;
-		bool reloadTexture = false;
-	};
 private:
-	ViewerState* stateRef;
+	void* loadedTexture = nullptr;
+	bool texturePending = true;
+	bool hasTexture = false;
+	void* texture;
+	tstudio::TextureId textureId;
 public:
-	ViewerModule(ViewerState* stateRef);
+	ViewerModule();
 	~ViewerModule();
+	void onBlank(App* instance, const tstudio::blank_callbacks& callbacks) override;
 	void render(App* instance) override;
 
 };

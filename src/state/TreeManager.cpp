@@ -76,6 +76,7 @@ TreeManager::ElementNode::ElementNode(TreeManager* manager, torasu::Element* ele
 	for (auto elementSlot : element->getElements()) {
 		auto& slot = slots[elementSlot.first];
 		torasu::Element* elemInSlot = elementSlot.second;
+		if (elemInSlot == nullptr) continue;
 		ElementNode* foundStored = manager->getStoredInstance(elemInSlot);
 		if (foundStored != nullptr) {
 			slot.ownedByNode = false;
