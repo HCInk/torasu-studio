@@ -60,20 +60,27 @@ App::App() {
 	std::cout << "Loaded " << std::to_string(state->elementFactories.size()) 
 				<< " element-types" << std::endl;
  
-	auto* num1 = new torasu::tstd::Rnum(2.0);
+	auto* num1 = new torasu::tstd::Rnum(0.5);
 	// auto* num2 = new torasu::tstd::Rnum(2.0);
 	// auto* mul1 = new torasu::tstd::Rmultiply(num1, num2);
 	// auto* mul2 = new torasu::tstd::Rmultiply(mul1, 10);
 	// auto* sub1 = new torasu::tstd::Rsubtract(mul2, 20);
-	auto* color1 = new imgc::Rcolor(num1, 1.0, 0.8, 1.0);
+	auto* color1 = new imgc::Rcolor(1.0, 1.0, 0.8, num1);
 	// auto* color2 = new imgc::Rcolor(1.0, num2, 0.3, 1.0);
 	auto* imageFile = new torasu::tstd::Rnet_file("https://cdn.pixabay.com/photo/2014/06/03/19/38/road-sign-361514_960_720.png");
 	auto* image = new imgc::Rimg_file(imageFile);
 	auto* colorMul = new torasu::tstd::Rmultiply(image, color1);
+	auto* text = new imgc::Rtext("TEST");
+	auto* textRnd = new imgc::Rgraphics(text);
+	auto* layerList = new torasu::tstd::Rlist({
+		colorMul,
+		// textRnd,
+	});
+	auto* layers = new imgc::Rlayer(layerList);
 
-	state->root = colorMul;
+	state->root = layers;
 	state->treeManager = new TreeManager(state->elementFactories, 
-		{imageFile, image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul});
+		{imageFile, image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layerList, layers});
 
 	state->runner = std::unique_ptr<torasu::tstd::EIcore_runner>(new torasu::tstd::EIcore_runner((size_t)1));
 	state->runnerInterface = std::unique_ptr<torasu::ExecutionInterface>(state->runner->createInterface());
