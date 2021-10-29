@@ -180,8 +180,9 @@ void renderDataEditor(TreeManager::ElementNode* node) {
 		if (strData == nullptr) return;
 		const std::string& currString = strData->getString();
 		size_t buffSize = currString.size()+1024*10;
-		char buffer[buffSize];
+		char buffer[buffSize+1];
 		std::copy_n(currString.c_str(), currString.size(), buffer);
+		buffer[currString.size()] = 0x00;
 		ImGui::PushItemWidth(100.0f);
 		if (ImGui::InputText("Value", buffer, buffSize)) {
 			node->setModifiedData(new torasu::tstd::Dstring(std::string(buffer)));
