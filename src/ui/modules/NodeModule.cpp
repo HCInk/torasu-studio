@@ -4,6 +4,7 @@
 
 #include <imgui_internal.h>
 #include <torasu/std/Dnum.hpp>
+#include <torasu/std/Dstring.hpp>
 
 #include "../../../thirdparty/imnodes/imnodes.h"
 #include "../../state/App.hpp"
@@ -172,6 +173,18 @@ void renderDataEditor(TreeManager::ElementNode* node) {
 		ImGui::PushItemWidth(100.0f);
 		if (ImGui::DragFloat("Value", &value, 0.01, -30.0f, 30.0f, "%.03f")) {
 			(*dynamic_cast<torasu::tstd::Dnum*>(node->getDataForModification())) = value;
+		}
+		ImGui::PopItemWidth();
+	} else if (node->getType() == "STD::RSTRING") {
+		auto* strData = dynamic_cast<torasu::tstd::Dstring*>(currData);
+		if (strData == nullptr) return;
+		const std::string& currString = strData->getString();
+		size_t buffSize = currString.size()+1024*10;
+		char buffer[buffSize];
+		std::copy_n(currString.c_str(), currString.size(), buffer);
+		ImGui::PushItemWidth(100.0f);
+		if (ImGui::InputText("Value", buffer, buffSize)) {
+			node->setModifiedData(new torasu::tstd::Dstring(std::string(buffer)));
 		}
 		ImGui::PopItemWidth();
 	}
