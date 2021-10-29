@@ -28,6 +28,7 @@ struct App::State {
 	std::unique_ptr<Monitor> mainMonitor;
 	std::vector<Monitor*> monitors;
 	torasu::Renderable* root;
+	bool clearingCache = false;
 };
 
 extern "C" {
@@ -97,8 +98,15 @@ void App::onBlank(const tstudio::blank_callbacks& callbacks) {
 		monitor->fetchItems(state->renderQueue);
 	}
 
-	if (state->treeManager->hasUpdates() && state->renderQueue->requestPause()) {
-		state->treeManager->applyUpdates();
+	bool hasUpdates = state->treeManager->hasUpdates();
+	if ((hasUpdates || state->clearingCache) && state->renderQueue->requestPause()) {
+		if (hasUpdates) {
+			state->treeManager->applyUpdates();
+		}
+		if (state->clearingCache) {
+			state->runner->clearCache();
+			state->clearingCache = false;
+		}
 		state->renderQueue->resume();
 
 		for (auto monitor : state->monitors) {
@@ -109,6 +117,21 @@ void App::onBlank(const tstudio::blank_callbacks& callbacks) {
 	for (auto monitor : state->monitors) {
 		monitor->enqueueItems(state->renderQueue);
 	}
+}
+
+App::RunnerMetrics App::getRunnerMetrics() {
+	auto metrics = state->runner->getMetrics();
+	return {
+		.queueSize = metrics.queueSize,
+		.cacheItemCount = metrics.cacheItemCount,
+		.cacheMemoryUsed = metrics.cacheMemoryUsed,
+		.cacheMemoryMax = metrics.cacheMemoryMax,
+		.clearingCache = state->clearingCache,
+	};
+}
+
+void App::clearRunnerCache() {
+	state->clearingCache = true;
 }
 
 TreeManager* App::getTreeManager() {

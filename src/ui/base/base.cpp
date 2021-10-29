@@ -13,6 +13,8 @@
 #include <imgui.h>
 #include <stdio.h>
 
+#include <torasu/std/EIcore_runner.hpp>
+
 #include "glfw_runner.hpp"
 
 // #include "../thirdparty/imgui-node-editor/imgui_node_editor.h"
@@ -142,7 +144,6 @@ static void main_loop() {
 	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
 	{
 		static float f = 0.0f;
-		static int counter = 0;
 
 
 		
@@ -157,11 +158,21 @@ static void main_loop() {
 		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
 		ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 
-		if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-			counter++;
-		ImGui::SameLine();
-		ImGui::Text("counter = %d", counter);
-		ImGui::SameLine();
+		{
+			ImGui::Text("Runner-Metrics");
+			auto metrics = app->getRunnerMetrics();
+			ImGui::Text("queueSize=%lu cacheItemCount=%lu cacheMemoryUsed=%luMiB cacheMemoryMax=%luMiB", 
+				metrics.queueSize, metrics.cacheItemCount, metrics.cacheMemoryUsed/(1024*1024), metrics.cacheMemoryMax/(1024*1024));
+
+			if (ImGui::Button("Clear Cache")) {
+				app->clearRunnerCache();
+			}
+			if (metrics.clearingCache) {
+				ImGui::SameLine();
+				ImGui::TextUnformatted("Clearing...");
+			}
+		}
+
 		if (ImGui::Button("Reset Layout"))
 			reloadLayout = true;
 

@@ -53,6 +53,7 @@ public:
 		/* const */ torasu::DataResource* getCurrentData();
 		void putSlot(const char* key, ElementNode* node);
 		torasu::DataResource* getDataForModification();
+		void setModifiedData(torasu::DataResource* data);
 
 		torasu::Identifier getType();
 		torasu::UserLabel getLabel();

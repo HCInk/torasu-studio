@@ -115,6 +115,13 @@ torasu::DataResource* TreeManager::ElementNode::getDataForModification() {
 	return modifiedData;
 }
 
+void TreeManager::ElementNode::setModifiedData(torasu::DataResource* data) {
+	auto* oldModifiedData = modifiedData;
+	modifiedData = data;
+	if (oldModifiedData != nullptr) delete oldModifiedData;
+	notifyUpdate();
+}
+
 void TreeManager::ElementNode::notifyUpdate() {
 	if (!updatePending) {
 		manager->notifyForUpdate(this);
