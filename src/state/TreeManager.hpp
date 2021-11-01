@@ -15,7 +15,7 @@ public:
 
 	class ElementNode;
 
-	void addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr);
+	void addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr, bool lateInit = false);
 	bool hasUpdates();
 	void applyUpdates();
 	std::vector<ElementNode*> getManagedNodes();
@@ -47,6 +47,7 @@ public:
 		~ElementNode();
 
 		void applyUpdates();
+		void updateLinks();
 
 	public:
 		const std::map<std::string, Slot>* getSlots();

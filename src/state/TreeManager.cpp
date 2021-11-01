@@ -9,6 +9,9 @@ TreeManager::TreeManager(const std::map<std::string, const torasu::ElementFactor
 	for (auto* element : elements) {
 		addNode(element);
 	}
+	for (auto managed : managedElements) {
+		managed.second->updateLinks();
+	}
 }
 
 TreeManager::~TreeManager() {
@@ -18,9 +21,11 @@ TreeManager::~TreeManager() {
 	}
 }
 
-void TreeManager::addNode(torasu::Element* element, const torasu::ElementFactory* factory) {
+void TreeManager::addNode(torasu::Element* element, const torasu::ElementFactory* factory, bool lateInit) {
 	if (factory == nullptr) factory = getFactoryForElement(element);
-	managedElements[element] = new TreeManager::ElementNode(this, element, factory);
+	auto* node = new TreeManager::ElementNode(this, element, factory);
+	if (!lateInit) node->updateLinks();
+	managedElements[element] = node;
 }
 
 bool TreeManager::hasUpdates() {
@@ -72,6 +77,9 @@ TreeManager::ElementNode::ElementNode(TreeManager* manager, torasu::Element* ele
 			slot.descriptor = currDescriptor;
 		}
 	}
+}
+
+void TreeManager::ElementNode::updateLinks() {
 	// Setting contained slots
 	for (auto elementSlot : element->getElements()) {
 		auto& slot = slots[elementSlot.first];
