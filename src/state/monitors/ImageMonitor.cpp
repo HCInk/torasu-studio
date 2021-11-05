@@ -4,6 +4,7 @@
 
 #include <torasu/render_tools.hpp>
 #include <torasu/std/pipeline_names.hpp>
+#include <torasu/std/context_names.hpp>
 
 namespace tstudio {
 
@@ -22,11 +23,13 @@ void ImageMonitor::resetResults() {
 void ImageMonitor::enqueueItems(RenderQueue* renderQueue, torasu::Renderable* renderable, torasu::LogInstruction li, torasu::RenderContext* rctx) {
 	if (updatedSizeSelection && !enqueued) {
 		imgFmt = torasu::tstd::Dbimg_FORMAT(selectedWidth, selectedHeight);
+		ratioNum = static_cast<double>(selectedWidth)/selectedHeight;
 		update = true;
 		updatedSizeSelection = false;
 	}
 	if (update && !enqueued && renderQueue->mayEnqueue()) {
 		update = false;
+		(*rctx)[TORASU_STD_CTX_IMG_RATIO] = &ratioNum;
 		renderId = renderQueue->enqueueRender(renderable, rctx, &imgSettings, li);
 		enqueued = true;
 	}
@@ -38,7 +41,7 @@ void ImageMonitor::fetchItems(RenderQueue* renderQueue, std::string* errorText) 
 		if (status != RenderQueue::ResultState_PENDING) {
 			std::unique_ptr<torasu::RenderResult> result(renderQueue->fetchResult(renderId));
 			enqueued = false;
-			if (result) {
+			if (result->getResult() != nullptr) {
 				auto* image = dynamic_cast<torasu::tstd::Dbimg*>(result->getResult());
 				if (image == nullptr) {
 					*errorText = "Render did not return expected type!";

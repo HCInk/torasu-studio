@@ -5,6 +5,7 @@
 
 #include <torasu/std/pipeline_names.hpp>
 #include <torasu/std/Dbimg.hpp>
+#include <torasu/std/Dnum.hpp>
 
 #include "Monitor.hpp"
 
@@ -16,10 +17,10 @@ private:
 	bool enqueued = false;
 	uint64_t renderId;
 
-
 	bool updatedSizeSelection = true;
 	uint32_t selectedWidth = 1920;
 	uint32_t selectedHeight = 1080;
+	torasu::tstd::Dnum ratioNum;
 	torasu::tstd::Dbimg* currentImage = nullptr;
 	torasu::tstd::Dbimg_FORMAT imgFmt = torasu::tstd::Dbimg_FORMAT(selectedWidth, selectedHeight);
 	torasu::tools::ResultSettingsSingleFmt imgSettings = torasu::tools::ResultSettingsSingleFmt(TORASU_STD_PL_VIS, &imgFmt);
