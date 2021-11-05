@@ -33,7 +33,7 @@ void NumberMonitor::fetchItems(RenderQueue* renderQueue, std::string* errorText)
 		if (status != RenderQueue::ResultState_PENDING) {
 			std::unique_ptr<torasu::RenderResult> result(renderQueue->fetchResult(renderId));
 			enqueued = false;
-			if (result) {
+			if (result->getResult() != nullptr) {
 				auto* numVal = dynamic_cast<torasu::tstd::Dnum*>(result->getResult());
 				if (numVal == nullptr) {
 					*errorText = "Render did not return expected type!";
