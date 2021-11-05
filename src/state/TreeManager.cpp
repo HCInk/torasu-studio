@@ -7,7 +7,7 @@ namespace tstudio {
 TreeManager::TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements) 
 	: factories(factories) {
 	for (auto* element : elements) {
-		addNode(element);
+		addNode(element, nullptr, true);
 	}
 	for (auto managed : managedElements) {
 		managed.second->updateLinks();
@@ -83,15 +83,24 @@ void TreeManager::ElementNode::updateLinks() {
 	// Setting contained slots
 	for (auto elementSlot : element->getElements()) {
 		auto& slot = slots[elementSlot.first];
+		if (slot.ownedByNode) {
+			delete slot.mounted;
+		}
 		torasu::Element* elemInSlot = elementSlot.second;
-		if (elemInSlot == nullptr) continue;
-		ElementNode* foundStored = manager->getStoredInstance(elemInSlot);
-		if (foundStored != nullptr) {
-			slot.ownedByNode = false;
-			slot.mounted = foundStored;
+		if (elemInSlot != nullptr) {
+
+			ElementNode* foundStored = manager->getStoredInstance(elemInSlot);
+			if (foundStored != nullptr) {
+				slot.ownedByNode = false;
+				slot.mounted = foundStored;
+			} else {
+				slot.ownedByNode = true;
+				slot.mounted = new ElementNode(manager, elemInSlot, manager->getFactoryForElement(elemInSlot));
+				slot.mounted->updateLinks();
+			}
 		} else {
-			slot.ownedByNode = true;
-			slot.mounted = new ElementNode(manager, elemInSlot, manager->getFactoryForElement(elemInSlot));
+			slot.ownedByNode = false;
+			slot.mounted = nullptr;
 		}
 	}
 }
