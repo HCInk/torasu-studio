@@ -67,8 +67,9 @@ App::App() {
 	// auto* sub1 = new torasu::tstd::Rsubtract(mul2, 20);
 	auto* color1 = new imgc::Rcolor(1.0, 1.0, 0.8, num1);
 	// auto* color2 = new imgc::Rcolor(1.0, num2, 0.3, 1.0);
-	auto* imageFile = new torasu::tstd::Rnet_file("https://townepizzas.com/assets/images/s7.png");
-	auto* image = new imgc::Rimg_file(imageFile);
+	auto* image = new imgc::Rimg_file(torasu::tools::inlineRenderable(
+		new torasu::tstd::Rnet_file("https://townepizzas.com/assets/images/s7.png") 
+	));
 	auto* colorMul = new torasu::tstd::Rmultiply(image, color1);
 	auto* text = new imgc::Rtext("TEST");
 	auto* textRnd = new imgc::Rgraphics(text);
@@ -78,16 +79,17 @@ App::App() {
 	auto* circleAlign = new imgc::Rauto_align2d(circleRnd, 0.0, 0.0, 0.0, 1.0);
 	auto* circleTransform = new imgc::Rtransform(circleAlign, 
 		torasu::tools::inlineRenderable(new torasu::tstd::Rmatrix({1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, 2)));
-	auto* layerList = new torasu::tstd::Rlist({
-		circleTransform,
-		colorMul,
-		// textRnd,
-	});
-	auto* layers = new imgc::Rlayer(layerList);
+	auto* layers = new imgc::Rlayer(torasu::tools::inlineRenderable(
+		new torasu::tstd::Rlist({
+			circleTransform,
+			colorMul,
+			// textRnd,
+		})
+	));
 
 	state->root = layers;
 	state->treeManager = new TreeManager(state->elementFactories, 
-		{imageFile, image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, layerList, circleRnd, circle, roundVal, circleAlign, circleTransform});
+		{/* imageFile, */ image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, circleRnd, circle, roundVal, circleAlign, circleTransform});
 
 	state->runner = std::unique_ptr<torasu::tstd::EIcore_runner>(new torasu::tstd::EIcore_runner((size_t)1));
 	state->runnerInterface = std::unique_ptr<torasu::ExecutionInterface>(state->runner->createInterface());

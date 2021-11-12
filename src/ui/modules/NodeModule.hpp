@@ -7,12 +7,12 @@
 namespace tstudio {
 
 class NodeModule : public Module {
-private:
+public:
 	struct State;
+private:
 	State* state;
 	std::vector<std::pair<int, int>> links;
 	float someFloat = 0;
-	int selectNode = -1;
 	bool nodeOpen = true;
 
 public:
