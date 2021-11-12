@@ -230,83 +230,135 @@ void renderNodeContents(const NodeModule::State::NodeObj& nodeIds, bool nodeOpen
 				ownedByNode = foundSlot->second.ownedByNode;
 			}
 
+			std::string slotLabel;
+			std::string slotDescription;
+			if (slotDescriptor != nullptr) {
+				slotLabel = slotDescriptor->label.name;
+				if (slotDescriptor->label.description != nullptr) 
+					slotDescription = slotDescriptor->label.description;
+			} else {
+				slotLabel = attrEntry.second;
+			}
+
 			if (ownedByNode) {
 				ImGui::PushID(attrIndex);
 
-				ImDrawList* draw_list = ImGui::GetWindowDrawList();
-				ImDrawListSplitter splitter;
-				splitter.Split(draw_list, 2);
-				// draw_list->ChannelsSplit(2);
-				ImGui::BeginGroup();
+				if (connectedNode->getType() == "STD::RNUM") {
 
-				// render group content
-				splitter.SetCurrentChannel(draw_list, 1);
-				// draw_list->ChannelsSetCurrent(1);
-				
-				if (nodeOpen) {
-					ImGui::Dummy(ImVec2(0,2));
-					if (slotDescriptor != nullptr) {
-						ImGui::Text("%s", slotDescriptor->label.name);
-						if (slotDescriptor->label.description != nullptr && ImGui::IsItemHovered()) {
-							ImGui::SetTooltip("%s", slotDescriptor->label.description);
+					ImNodes::BeginInputAttribute(attrEntry.first, ImNodesPinShape_CircleFilled);
+					if (nodeOpen) {
+						auto* currData = connectedNode->getCurrentData();
+						if (currData != nullptr) if (auto* numData = dynamic_cast<torasu::tstd::Dnum*>(currData)) {
+							float value = numData->getNum();
+							ImGui::PushItemWidth(100.0f);
+
+							if (ImGui::DragFloat(slotLabel.c_str(), &value, 0.01, -30.0f, 30.0f, "%.03f")) {
+								(*dynamic_cast<torasu::tstd::Dnum*>(connectedNode->getDataForModification())) = value;
+							}
+
+							if (ImGui::IsItemHovered() && !slotDescription.empty()) {
+								ImGui::SetTooltip("%s", slotDescription.c_str());
+							}
+							ImGui::PopItemWidth();
 						}
-					} else {
-						ImGui::Text("%s", attrEntry.second.c_str());
 					}
-					ImGui::SameLine();
-					ImGui::Text("[%s]", connectedNode->getLabel().name);
-				}
+					ImNodes::EndInputAttribute();
 
-				NodeModule::State::NodeObj* foundNodeObj = nullptr;
+				}  else if (connectedNode->getType() == "STD::RSTRING") {
 
-				for (auto owned : nodeIds.ownedNodes) {
-					if (connectedNode == owned->elemNode) {
-						foundNodeObj = owned;
-						break;
+					ImNodes::BeginInputAttribute(attrEntry.first, ImNodesPinShape_CircleFilled);
+					if (nodeOpen) {
+						auto* currData = connectedNode->getCurrentData();
+						if (currData != nullptr) if (auto* strData = dynamic_cast<torasu::tstd::Dstring*>(currData)) {
+							const std::string& currString = strData->getString();
+							size_t buffSize = currString.size()+1024*10;
+							char buffer[buffSize+1];
+							std::copy_n(currString.c_str(), currString.size(), buffer);
+							buffer[currString.size()] = 0x00;
+							ImGui::PushItemWidth(100.0f);
+							
+							if (ImGui::InputText(slotLabel.c_str(), buffer, buffSize)) {
+								connectedNode->setModifiedData(new torasu::tstd::Dstring(std::string(buffer)));
+							}
+
+							if (ImGui::IsItemHovered() && !slotDescription.empty()) {
+								ImGui::SetTooltip("%s", slotDescription.c_str());
+							}
+							ImGui::PopItemWidth();
+						}
 					}
-				}
+					ImNodes::EndInputAttribute();
 
-				if (foundNodeObj != nullptr) {
-					renderNodeContents(*foundNodeObj, nodeOpen, selectNode, state, false);
 				} else {
-					ImGui::TextUnformatted("[Unresolvable!]");
+
+					ImDrawList* draw_list = ImGui::GetWindowDrawList();
+					ImDrawListSplitter splitter;
+					splitter.Split(draw_list, 2);
+					// draw_list->ChannelsSplit(2);
+					ImGui::BeginGroup();
+
+					// render group content
+					splitter.SetCurrentChannel(draw_list, 1);
+					// draw_list->ChannelsSetCurrent(1);
+					
+					if (nodeOpen) {
+						ImGui::Dummy(ImVec2(0,2));
+						ImGui::Text("%s", slotLabel.c_str());
+						if (ImGui::IsItemHovered() && !slotDescription.empty()) {
+							ImGui::SetTooltip("%s", slotDescription.c_str());
+						}
+						ImGui::SameLine();
+						ImGui::Text("[%s]", connectedNode->getLabel().name);
+					}
+
+					NodeModule::State::NodeObj* foundNodeObj = nullptr;
+
+					for (auto owned : nodeIds.ownedNodes) {
+						if (connectedNode == owned->elemNode) {
+							foundNodeObj = owned;
+							break;
+						}
+					}
+
+					if (foundNodeObj != nullptr) {
+						renderNodeContents(*foundNodeObj, nodeOpen, selectNode, state, false);
+					} else {
+						ImGui::TextUnformatted("[Unresolvable!]");
+					}
+
+					if (nodeOpen) {
+						ImGui::Dummy(ImVec2(0,2));
+					}
+
+					// auto cursorPos = window->DC.CursorPos;
+					// window->DrawList->Add(ImVec2(cursorPos.x, cursorPos.y), 10, IM_COL32(255, 100, 100, 255));
+					ImGui::EndGroup();
+					
+					// render a background quad
+					splitter.SetCurrentChannel(draw_list, 0);
+					// draw_list->ChannelsSetCurrent(0);
+
+					if (nodeOpen) {
+						auto min = ImGui::GetItemRectMin();
+						min.x -= 4;
+						auto max = ImGui::GetItemRectMax();
+						max.x += 4;
+						ImGui::GetWindowDrawList()->AddRectFilled(min, max, IM_COL32(0, 0, 0, 50), 4);
+					}
+
+					splitter.Merge(draw_list);
+					// draw_list->ChannelsMerge();
+
 				}
-
-				if (nodeOpen) {
-					ImGui::Dummy(ImVec2(0,2));
-				}
-
-				// auto cursorPos = window->DC.CursorPos;
-				// window->DrawList->Add(ImVec2(cursorPos.x, cursorPos.y), 10, IM_COL32(255, 100, 100, 255));
-				ImGui::EndGroup();
-				
-				// render a background quad
-				splitter.SetCurrentChannel(draw_list, 0);
-				// draw_list->ChannelsSetCurrent(0);
-
-				if (nodeOpen) {
-					auto min = ImGui::GetItemRectMin();
-					min.x -= 4;
-					auto max = ImGui::GetItemRectMax();
-					max.x += 4;
-					ImGui::GetWindowDrawList()->AddRectFilled(min, max, IM_COL32(0, 0, 0, 50), 4);
-				}
-
-				splitter.Merge(draw_list);
-				// draw_list->ChannelsMerge();
 
 				ImGui::PopID();
 			} else {
 				ImNodes::BeginInputAttribute(attrEntry.first, ImNodesPinShape_CircleFilled);
 
 				if (nodeOpen) {
-					if (slotDescriptor != nullptr) {
-						ImGui::Text("%s", slotDescriptor->label.name);
-						if (slotDescriptor->label.description != nullptr && ImGui::IsItemHovered()) {
-							ImGui::SetTooltip("%s", slotDescriptor->label.description);
-						}
-					} else {
-						ImGui::Text("%s", attrEntry.second.c_str());
+					ImGui::Text("%s", slotLabel.c_str());
+					if (ImGui::IsItemHovered() && !slotDescription.empty()) {
+						ImGui::SetTooltip("%s", slotDescription.c_str());
 					}
 					ImGui::SameLine();
 					if (connectedNode != nullptr) {
