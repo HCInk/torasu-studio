@@ -295,11 +295,11 @@ void renderNodeContents(const NodeModule::State::NodeObj& nodeIds, bool nodeOpen
 					ImDrawListSplitter splitter;
 					splitter.Split(draw_list, 2);
 					// draw_list->ChannelsSplit(2);
-					ImGui::BeginGroup();
 
 					// render group content
 					splitter.SetCurrentChannel(draw_list, 1);
 					// draw_list->ChannelsSetCurrent(1);
+					ImGui::BeginGroup();
 					
 					if (nodeOpen) {
 						ImGui::Dummy(ImVec2(0,2));
