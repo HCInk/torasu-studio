@@ -81,7 +81,7 @@ struct NodeModule::State {
 		}
 
 		size_t idIndex = 0;
-		std::set<NodeObj*> nolongerOwned = node->ownedNodes;
+		std::set<NodeObj*> unmatchedOwned = node->ownedNodes;
 		for (auto slot : slotMap) {
 			// Set attribute-ids
 			attributeIds[ids[idIndex]] = slot.first;
@@ -89,11 +89,15 @@ struct NodeModule::State {
 
 			// Managed owned nodes
 			if (slot.second.ownedByNode) {
-				NodeObj* ownedObj;
-				auto found = nolongerOwned.find(ownedObj);
-				if (found != nolongerOwned.end()) { // Already existed before
-					nolongerOwned.erase(found);
-					ownedObj = *found;
+				NodeObj* ownedObj = nullptr;
+				for (NodeObj* currOwned : unmatchedOwned) {
+					if (slot.second.mounted == currOwned->elemNode) {
+						ownedObj = currOwned;
+						break;
+					}
+				}
+				if (ownedObj != nullptr) { // Already existed before
+					unmatchedOwned.erase(ownedObj);
 				} else { // New
 					ownedObj = new NodeObj();
 					ownedObj->elemNode = slot.second.mounted;
@@ -103,7 +107,7 @@ struct NodeModule::State {
 				updateNodeContent(ownedObj);
 			}
 		}
-		for (auto* toRemove : nolongerOwned) {
+		for (auto* toRemove : unmatchedOwned) { // Remove all left owned nodes, which couldn't be matched
 			node->ownedNodes.erase(toRemove);
 			removeNode(toRemove);
 		}
@@ -308,7 +312,7 @@ void renderNodeContents(const NodeModule::State::NodeObj& nodeIds, bool nodeOpen
 							ImGui::SetTooltip("%s", slotDescription.c_str());
 						}
 						ImGui::SameLine();
-						ImGui::Text("[%s]", connectedNode->getLabel().name);
+						ImGui::Text("[%s] #%i", connectedNode->getLabel().name, attrEntry.first);
 					}
 
 					NodeModule::State::NodeObj* foundNodeObj = nullptr;
@@ -448,7 +452,7 @@ void NodeModule::render(App* instance) {
 		ImNodes::BeginNodeTitleBar();
 		ImGui::Checkbox("", &nodeOpen);
 		ImGui::SameLine();
-		ImGui::Text("%s [%i]", node->getLabel().name, nodeIds.nodeId);
+		ImGui::Text("%s #%i", node->getLabel().name, nodeIds.nodeId);
 		if (nodeIds.elemNode->isUpdatePending()) {
 			ImGui::SameLine();
 			State::node_id hoveredNode;

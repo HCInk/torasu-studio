@@ -77,7 +77,8 @@ App::App() {
 	auto* circle = new imgc::Rrothumbus(roundVal);
 	auto* circleRnd = new imgc::Rgraphics(circle);
 	auto* circleAlign = new imgc::Rauto_align2d(circleRnd, 0.0, 0.0, 0.0, 1.0);
-	auto* circleTransform = new imgc::Rtransform(circleAlign, 
+	auto* circleTransform = new imgc::Rtransform(
+		torasu::tools::inlineRenderable(circleAlign), 
 		torasu::tools::inlineRenderable(new torasu::tstd::Rmatrix({1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, 2)));
 	auto* layers = new imgc::Rlayer(torasu::tools::inlineRenderable(
 		new torasu::tstd::Rlist({
@@ -89,7 +90,7 @@ App::App() {
 
 	state->root = layers;
 	state->treeManager = new TreeManager(state->elementFactories, 
-		{/* imageFile, */ image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, circleRnd, circle, roundVal, circleAlign, circleTransform});
+		{/* imageFile, */ image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, circleRnd, circle, roundVal, /* circleAlign, */ circleTransform});
 
 	state->runner = std::unique_ptr<torasu::tstd::EIcore_runner>(new torasu::tstd::EIcore_runner((size_t)1));
 	state->runnerInterface = std::unique_ptr<torasu::ExecutionInterface>(state->runner->createInterface());
