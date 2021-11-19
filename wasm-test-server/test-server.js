@@ -7,7 +7,11 @@ app.use((_, res, next) => {
   next();
 });
 
-app.use(express.static('../build'));
+if (process.argv.length > 2) {
+	app.use(express.static(process.argv[2]));
+} else {
+	app.use(express.static('.'));
+}
 
 const PORT = process.env.PORT || 8080;
 
