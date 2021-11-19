@@ -18,6 +18,26 @@
 #endif
 namespace tstudio {
 
+static void ApplyingIcon() {
+	ImVec2 circlePadding(0.0f, 2.0f);
+	const static float circleSize = 11.0f;
+	ImDrawList* drawList = ImGui::GetWindowDrawList();
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	if (!window->SkipItems) {
+		auto cursorPos = window->DC.CursorPos; // ImGui::GetCursorPos();
+		ImVec2 endPos(cursorPos.x + circleSize + circlePadding.x*2, cursorPos.y + circleSize + circlePadding.y*2);
+		ImVec2 center(cursorPos.x + circleSize/2 + circlePadding.x, cursorPos.y + circleSize/2 + circlePadding.y);
+		ImRect bb(cursorPos, endPos);
+		ImGui::Dummy(ImVec2(circleSize,circleSize));
+		// ImGui::ItemSize(bb);
+		drawList->AddCircleFilled(center, circleSize/2, IM_COL32(255, 100, 100, 255));
+		// drawList->AddCircle(center, circleSize/2, IM_COL32(255, 255, 255, 255), 0, 1.5f);
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip("Applying changes...");
+		}
+	}
+}
+
 struct NodeModule::State {
 	typedef int node_id;
 	struct NodeObj {
@@ -265,6 +285,10 @@ void renderNodeContents(const NodeModule::State::NodeObj& nodeIds, bool nodeOpen
 							}
 							ImGui::PopItemWidth();
 						}
+						if (connectedNode->isUpdatePending()) {
+							ImGui::SameLine();
+							ApplyingIcon();
+						}
 					}
 					ImNodes::EndInputAttribute();
 
@@ -290,6 +314,10 @@ void renderNodeContents(const NodeModule::State::NodeObj& nodeIds, bool nodeOpen
 							}
 							ImGui::PopItemWidth();
 						}
+						if (connectedNode->isUpdatePending()) {
+							ImGui::SameLine();
+							ApplyingIcon();
+						}
 					}
 					ImNodes::EndInputAttribute();
 
@@ -313,6 +341,10 @@ void renderNodeContents(const NodeModule::State::NodeObj& nodeIds, bool nodeOpen
 						}
 						ImGui::SameLine();
 						ImGui::Text("[%s] #%i", connectedNode->getLabel().name, attrEntry.first);
+						if (connectedNode->isUpdatePending()) {
+							ImGui::SameLine();
+							ApplyingIcon();
+						}
 					}
 
 					NodeModule::State::NodeObj* foundNodeObj = nullptr;
@@ -455,24 +487,7 @@ void NodeModule::render(App* instance) {
 		ImGui::Text("%s #%i", node->getLabel().name, nodeIds.nodeId);
 		if (nodeIds.elemNode->isUpdatePending()) {
 			ImGui::SameLine();
-			State::node_id hoveredNode;
-			ImVec2 circlePadding(0.0f, 2.0f);
-			float circleSize = 11.0f;
-			ImDrawList* drawList = ImGui::GetWindowDrawList();
-			ImGuiWindow* window = ImGui::GetCurrentWindow();
-			if (!window->SkipItems) {
-				auto cursorPos = window->DC.CursorPos; // ImGui::GetCursorPos();
-				ImVec2 endPos(cursorPos.x + circleSize + circlePadding.x*2, cursorPos.y + circleSize + circlePadding.y*2);
-				ImVec2 center(cursorPos.x + circleSize/2 + circlePadding.x, cursorPos.y + circleSize/2 + circlePadding.y);
-				ImRect bb(cursorPos, endPos);
-				ImGui::Dummy(ImVec2(circleSize,circleSize));
-				// ImGui::ItemSize(bb);
-				drawList->AddCircleFilled(center, circleSize/2, IM_COL32(255, 100, 100, 255));
-				// drawList->AddCircle(center, circleSize/2, IM_COL32(255, 255, 255, 255), 0, 1.5f);
-				if (ImGui::IsItemHovered()) {
-					ImGui::SetTooltip("Applying changes...");
-				}
-			}
+			ApplyingIcon();
 		}
 		ImNodes::EndNodeTitleBar();
 
