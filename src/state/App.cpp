@@ -68,10 +68,7 @@ App::App() {
 	auto* color1 = new imgc::Rcolor(1.0, 1.0, 0.8, num1);
 	// auto* color2 = new imgc::Rcolor(1.0, num2, 0.3, 1.0);
 	auto* video = new imgc::Rmedia_file(torasu::tools::inlineRenderable(new torasu::tstd::Rnet_file(
-#if EMSCRIPTEN
-		"https://cors-anywhere.herokuapp.com/"
-#endif
-		"https://www.appsloveworld.com/wp-content/uploads/2018/10/sample-mp4-video.mp4"
+		"https://wasm.hcink.org/torasu/sample-mp4-bunny.mp4"
 	)));
 	auto* image = new torasu::tstd::Rmod_rctx(video, torasu::tools::inlineRenderable(new torasu::tstd::Rnum(0)), TORASU_STD_CTX_TIME, TORASU_STD_PL_NUM);
 	auto* colorMul = new torasu::tstd::Rmultiply(image, color1);
