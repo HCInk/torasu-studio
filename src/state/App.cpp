@@ -67,9 +67,13 @@ App::App() {
 	// auto* sub1 = new torasu::tstd::Rsubtract(mul2, 20);
 	auto* color1 = new imgc::Rcolor(1.0, 1.0, 0.8, num1);
 	// auto* color2 = new imgc::Rcolor(1.0, num2, 0.3, 1.0);
-	auto* image = new imgc::Rimg_file(torasu::tools::inlineRenderable(
-		new torasu::tstd::Rnet_file("https://townepizzas.com/assets/images/s7.png") 
-	));
+	auto* video = new imgc::Rmedia_file(torasu::tools::inlineRenderable(new torasu::tstd::Rnet_file(
+#if EMSCRIPTEN
+		"https://cors-anywhere.herokuapp.com/"
+#endif
+		"https://www.appsloveworld.com/wp-content/uploads/2018/10/sample-mp4-video.mp4"
+	)));
+	auto* image = new torasu::tstd::Rmod_rctx(video, torasu::tools::inlineRenderable(new torasu::tstd::Rnum(0)), TORASU_STD_CTX_TIME, TORASU_STD_PL_NUM);
 	auto* colorMul = new torasu::tstd::Rmultiply(image, color1);
 	auto* text = new imgc::Rtext("TEST");
 	auto* textRnd = new imgc::Rgraphics(text);
@@ -87,10 +91,11 @@ App::App() {
 			// textRnd,
 		})
 	));
+	auto* encode = new imgc::Rmedia_creator(layers, "mp4", 0.0, 10.0, 25.0, 1280, 720, 4000*1000);
 
-	state->root = layers;
+	state->root = encode;
 	state->treeManager = new TreeManager(state->elementFactories, 
-		{/* imageFile, */ image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, circleRnd, circle, roundVal, /* circleAlign, */ circleTransform});
+		{/* imageFile, */ video, image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, encode, circleRnd, circle, roundVal, /* circleAlign, */ circleTransform});
 
 	state->runner = std::unique_ptr<torasu::tstd::EIcore_runner>(new torasu::tstd::EIcore_runner((size_t)1));
 	state->runnerInterface = std::unique_ptr<torasu::ExecutionInterface>(state->runner->createInterface());
