@@ -38,7 +38,7 @@ private:
 	torasu::RenderContext rctx;
 
 public:
-	SelectionMode selectionMode = MONITOR_DEFINED;
+	SelectionMode selectionMode = MONITOR_ROOT;
 	std::string renderError = "";
 
 

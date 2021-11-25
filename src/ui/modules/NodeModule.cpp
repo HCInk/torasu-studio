@@ -49,10 +49,13 @@ struct NodeModule::State {
 
 	node_id idCounter = 0;
 
-	std::map<TreeManager::ElementNode*, NodeObj*> objMap;
-	std::map<node_id, NodeObj*> idMap;
+	std::map<TreeManager::ElementNode*, NodeObj*> objMap; // init/update on remap
+	std::map<node_id, NodeObj*> idMap; // init/update on remap
 	bool needsRemap = true;
-	tstudio::TreeManager::version_t treeVersion;
+	tstudio::TreeManager::version_t treeVersion; // init/update on remap
+	TreeManager::OutputNode* outputNode; // init/update on remap
+	NodeObj* linkedToOutput; // init/update on remap
+	const node_id outputId = idCounter++;
 
 	bool removeNode(TreeManager::ElementNode* node) {
 		auto found = objMap.find(node);
@@ -154,6 +157,15 @@ struct NodeModule::State {
 		return currNode;
 	}
 
+	void setLinkedToOutput(NodeObj* nodeObj) {
+		linkedToOutput = nodeObj;
+		if (nodeObj != nullptr) {
+			outputNode->setSelected(nodeObj->elemNode);
+		} else {
+			outputNode->setSelected(nullptr);
+		}
+	}
+
 	~State() {
 		for (auto entry : objMap) {
 			removeNode(entry.second);
@@ -175,6 +187,19 @@ struct NodeModule::State {
 #endif
 		for (auto* node : treeManager->getManagedNodes()) {
 			mapNode(node);
+		}
+		outputNode = treeManager->getOutputNode();
+		TreeManager::ElementNode* selected = outputNode->getSelected();
+		if (selected != nullptr) {
+			auto found = objMap.find(selected);
+			if (found != objMap.end()) {
+				linkedToOutput = found->second;
+			} else {
+				linkedToOutput = nullptr;
+				throw std::logic_error("Failed to find node referenced in root");
+			}
+		} else {
+			linkedToOutput = nullptr;
 		}
 
 #if DEBUG_LOG
@@ -496,9 +521,33 @@ void NodeModule::render(App* instance) {
 		ImNodes::EndNode();
 	}
 
+	{ // Output Node
+		ImNodes::BeginNode(state->outputId);
+		ImNodes::BeginNodeTitleBar();
+		ImGui::Checkbox("", &nodeOpen);
+		ImGui::SameLine();
+		ImGui::Text("Output #%i", state->outputId);
+		if (state->outputNode->hasUpdatePending()) {
+			ImGui::SameLine();
+			ApplyingIcon();
+		}
+		ImNodes::EndNodeTitleBar();
+		ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
+		ImNodes::BeginInputAttribute(state->outputId);
+		if (nodeOpen) {
+			ImGui::TextUnformatted("master");
+		}
+		ImNodes::EndInputAttribute();
+		ImNodes::PopAttributeFlag();
+		ImNodes::EndNode();
+	}
 
 	for (auto nodeEntry : state->objMap) {
 		renderLinks(*nodeEntry.second, state);
+	}
+
+	if (state->linkedToOutput != nullptr) {
+		ImNodes::Link(state->outputId, state->linkedToOutput->nodeId, state->outputId);
 	}
 
 	ImNodes::MiniMap();
@@ -510,16 +559,20 @@ void NodeModule::render(App* instance) {
 #if DEBUG_LOG
 		std::cout << "Node-View: Destory link " << linkReciever << std::endl;
 #endif
-		auto foundNode = state->idMap.find(linkReciever);
-		if (foundNode != state->idMap.end()) {
-			auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
-			if (foundAttr != foundNode->second->attributeIds.end()) {
-				foundNode->second->elemNode->putSlot(foundAttr->second.c_str(), nullptr);
-			} else {
-				throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
-			}
+		if (linkReciever == state->outputId) {
+			state->setLinkedToOutput(nullptr);
 		} else {
-			throw std::logic_error("Failed to find node for link-id");
+			auto foundNode = state->idMap.find(linkReciever);
+			if (foundNode != state->idMap.end()) {
+				auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
+				if (foundAttr != foundNode->second->attributeIds.end()) {
+					foundNode->second->elemNode->putSlot(foundAttr->second.c_str(), nullptr);
+				} else {
+					throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
+				}
+			} else {
+				throw std::logic_error("Failed to find node for link-id");
+			}
 		}
 	}
 	State::node_id linkedNode;
@@ -527,17 +580,26 @@ void NodeModule::render(App* instance) {
 #if DEBUG_LOG
 		std::cout << "Node-View: Create link " << linkedNode << "-" << linkReciever << std::endl;
 #endif
-		auto foundLinked = state->idMap.find(linkedNode);
-		auto foundNode = state->idMap.find(linkReciever);
-		if (foundLinked != state->idMap.end() || foundNode != state->idMap.end()) {
-			auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
-			if (foundAttr != foundNode->second->attributeIds.end()) {
-				foundNode->second->elemNode->putSlot(foundAttr->second.c_str(), foundLinked->second->elemNode);
+		if (linkReciever == state->outputId) {
+			auto foundLinked = state->idMap.find(linkedNode);
+			if (foundLinked != state->idMap.end()) {
+				state->setLinkedToOutput(foundLinked->second);
 			} else {
-				throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
+				throw std::logic_error("Failed to find node for link-id (output-link)");
 			}
 		} else {
-			throw std::logic_error("Failed to find node(s) for link-id");
+			auto foundLinked = state->idMap.find(linkedNode);
+			auto foundNode = state->idMap.find(linkReciever);
+			if (foundLinked != state->idMap.end() || foundNode != state->idMap.end()) {
+				auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
+				if (foundAttr != foundNode->second->attributeIds.end()) {
+					foundNode->second->elemNode->putSlot(foundAttr->second.c_str(), foundLinked->second->elemNode);
+				} else {
+					throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
+				}
+			} else {
+				throw std::logic_error("Failed to find node(s) for link-id");
+			}
 		}
 		// links.push_back(std::make_pair(start_attr, end_attr));
 	}

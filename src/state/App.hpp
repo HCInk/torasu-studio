@@ -38,7 +38,6 @@ public:
 	void clearRunnerCache();
 
 	TreeManager* getTreeManager();
-	torasu::Renderable* getRootElement();
 	Monitor* getMainMonitor();
 
 

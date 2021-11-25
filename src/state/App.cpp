@@ -27,7 +27,6 @@ struct App::State {
 	std::unique_ptr<torasu::tstd::LIcore_logger> logger;
 	std::unique_ptr<Monitor> mainMonitor;
 	std::vector<Monitor*> monitors;
-	torasu::Renderable* root;
 	bool clearingCache = false;
 };
 
@@ -90,17 +89,16 @@ App::App() {
 	));
 	auto* encode = new imgc::Rmedia_creator(layers, "mp4", 0.0, 10.0, 25.0, 1280, 720, 4000*1000);
 
-	state->root = encode;
 	state->treeManager = new TreeManager(state->elementFactories, 
-		{/* imageFile, */ video, image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, encode, circleRnd, circle, roundVal, /* circleAlign, */ circleTransform});
-
+		{/* imageFile, */ video, image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, encode, circleRnd, circle, roundVal, /* circleAlign, */ circleTransform},
+		encode);
 	state->runner = std::unique_ptr<torasu::tstd::EIcore_runner>(new torasu::tstd::EIcore_runner((size_t)1));
 	state->runnerInterface = std::unique_ptr<torasu::ExecutionInterface>(state->runner->createInterface());
 	state->renderQueue = new RenderQueue(state->runnerInterface.get());
 
 	// state->mainMonitor = std::unique_ptr<Monitor>(new Monitor(new NumberMonitor(), state->logger.get()));
 	state->mainMonitor = std::unique_ptr<Monitor>(new Monitor(new ImageMonitor(), state->logger.get()));
-	state->mainMonitor->setRenderable(state->root);
+	state->mainMonitor->setRenderable(state->treeManager->getOutputNode()->getEffective());
 	state->monitors.push_back(state->mainMonitor.get());
 }
 
@@ -121,6 +119,11 @@ void App::onBlank(const tstudio::blank_callbacks& callbacks) {
 	if ((hasUpdates || state->clearingCache) && state->renderQueue->requestPause()) {
 		if (hasUpdates) {
 			state->treeManager->applyUpdates();
+			for (auto monitor : state->monitors) {
+				if (monitor->selectionMode == Monitor::MONITOR_ROOT) {
+					monitor->setRenderable(state->treeManager->getOutputNode()->getEffective());
+				}
+			}
 		}
 		if (state->clearingCache) {
 			state->runner->clearCache();
@@ -155,10 +158,6 @@ void App::clearRunnerCache() {
 
 TreeManager* App::getTreeManager() {
 	return state->treeManager;
-}
-
-torasu::Renderable* App::getRootElement() {
-	return state->root;
 }
 
 Monitor* App::getMainMonitor() {

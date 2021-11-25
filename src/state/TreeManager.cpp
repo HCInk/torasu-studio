@@ -4,13 +4,22 @@
 
 namespace tstudio {
 
-TreeManager::TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements) 
+TreeManager::TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements, torasu::Element* root) 
 	: factories(factories) {
 	for (auto* element : elements) {
 		addNode(element, nullptr, true);
 	}
 	for (auto managed : managedElements) {
 		managed.second->updateLinks();
+	}
+	if (root != nullptr) {
+		auto foundRoot = managedElements.find(root);
+		if (foundRoot != managedElements.end()) {
+			outputNode.setSelected(foundRoot->second);
+			outputNode.update();
+		} else {
+			throw std::logic_error("Failed to find root element in list of managed elements!");
+		}
 	}
 }
 
@@ -29,7 +38,7 @@ void TreeManager::addNode(torasu::Element* element, const torasu::ElementFactory
 }
 
 bool TreeManager::hasUpdates() {
-	return !pendingUpdates.empty();
+	return !pendingUpdates.empty() || outputNode.hasUpdatePending();
 }
 
 void TreeManager::applyUpdates() {
@@ -37,6 +46,9 @@ void TreeManager::applyUpdates() {
 		toUpdate->applyUpdates();
 	}
 	pendingUpdates.clear();
+	if (outputNode.hasUpdatePending()) {
+		outputNode.update();
+	}
 	version++;
 }
 
@@ -46,6 +58,37 @@ std::vector<TreeManager::ElementNode*> TreeManager::getManagedNodes() {
 		elementList.push_back(managedElement.second);
 	}
 	return elementList;
+}
+
+TreeManager::OutputNode* TreeManager::getOutputNode() {
+	return &outputNode;
+}
+
+torasu::Renderable* TreeManager::OutputNode::getEffective() {
+	return rootRenderable;
+}
+
+TreeManager::ElementNode* TreeManager::OutputNode::getSelected() {
+	return selectedRoot;
+}
+
+void TreeManager::OutputNode::setSelected(ElementNode* newRoot) {
+	selectedRoot = newRoot;
+	rootUpdatePending = true;
+}
+
+void TreeManager::OutputNode::update() {
+	if (selectedRoot != nullptr) {
+		if (torasu::Renderable* newRoot = dynamic_cast<torasu::Renderable*>(selectedRoot->element)) {
+			rootRenderable = newRoot;
+		} else {
+			rootRenderable = nullptr;
+			selectedRoot = nullptr;
+		}
+	} else {
+		rootRenderable = nullptr;
+	}
+	rootUpdatePending = false;
 }
 
 TreeManager::version_t TreeManager::getVersion() {

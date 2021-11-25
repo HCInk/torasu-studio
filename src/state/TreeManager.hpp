@@ -10,15 +10,17 @@ namespace tstudio {
 
 class TreeManager {
 public:
-	TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements = {});
+	TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements = {}, torasu::Element* root = nullptr);
 	~TreeManager();
 
 	class ElementNode;
+	class OutputNode;
 
 	void addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr, bool lateInit = false);
 	bool hasUpdates();
 	void applyUpdates();
 	std::vector<ElementNode*> getManagedNodes();
+	OutputNode* getOutputNode();
 	typedef size_t version_t;
 	version_t getVersion();
 
@@ -64,10 +66,27 @@ public:
 	};
 	friend ElementNode;
 
+	class OutputNode {
+	private:
+		torasu::Renderable* rootRenderable = nullptr;
+		ElementNode* selectedRoot = nullptr;
+		bool rootUpdatePending = false;
+	public:
+		torasu::Renderable* getEffective();
+		ElementNode* getSelected();
+		void setSelected(ElementNode* newRoot);
+		inline bool hasUpdatePending() { return rootUpdatePending; }
+	protected:
+		void update();
+		friend TreeManager;
+	};
+
 private:
 	std::vector<ElementNode*> pendingUpdates;
 	std::map<const torasu::Element*, ElementNode*> managedElements;
 	std::map<std::string, const torasu::ElementFactory*> factories;
+	OutputNode outputNode;
+
 	version_t version = 0;
 
 protected:
