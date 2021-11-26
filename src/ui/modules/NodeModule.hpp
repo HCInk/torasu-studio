@@ -13,7 +13,6 @@ private:
 	State* state;
 	std::vector<std::pair<int, int>> links;
 	float someFloat = 0;
-	bool nodeOpen = true;
 
 public:
 	NodeModule();

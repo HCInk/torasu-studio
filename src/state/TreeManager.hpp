@@ -8,6 +8,8 @@
 
 namespace tstudio {
 
+class ElementDisplay; // from #include "TreeManager.hpp"
+
 class TreeManager {
 public:
 	TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements = {}, torasu::Element* root = nullptr);
@@ -41,6 +43,8 @@ public:
 		bool updatePending = false;
 		std::set<std::string> updatedSlots;
 		torasu::DataResource* modifiedData = nullptr;
+
+		ElementDisplay* displaySettings;
 		
 		void notifyUpdate();
 
@@ -61,6 +65,8 @@ public:
 		torasu::Identifier getType();
 		torasu::UserLabel getLabel();
 		bool isUpdatePending();
+
+		inline ElementDisplay* getDisplaySettings() { return displaySettings; }
 
 		friend TreeManager;
 	};

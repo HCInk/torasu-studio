@@ -11,6 +11,7 @@
 #include "../../../thirdparty/imnodes/imnodes.h"
 #include "../../state/App.hpp"
 #include "../../state/TreeManager.hpp"
+#include "../../state/ElementDisplay.hpp"
 
 #define DEBUG_LOG true
 #define DO_SNAP false
@@ -47,12 +48,6 @@ struct NodeModule::State {
 		node_id nodeId;
 		std::map<node_id, std::string> attributeIds; 
 		std::set<NodeObj*> ownedNodes; 
-		bool hasPosition = false;
-		struct NodeSize {
-			bool hasSize = false;
-			uint32_t width;
-			uint32_t height;
-		} displaySize;
 	};
 
 	node_id idCounter = 0;
@@ -200,11 +195,14 @@ struct NodeModule::State {
 		struct ProcLevel {
 			NodeModule::State::NodeObj* obj;
 			std::queue<NodeModule::State::NodeObj*> childQueue;
-			std::vector<std::pair<node_id, ImVec2>> positioned;
+			std::vector<std::pair<NodeModule::State::NodeObj*, ImVec2>> positioned;
 			uint64_t totalHeight;
+			ElementDisplay* displaySettings;
+			ElementDisplay::NodeSize nodeSize;
 			uint64_t horPos;
 			ProcLevel(NodeModule::State::NodeObj* obj, State* state, size_t horPosOff) 
-				: obj(obj), totalHeight(0), horPos(horPosOff + (obj->displaySize.hasSize ? obj->displaySize.width : 100)) {
+				: obj(obj), totalHeight(0), displaySettings(obj->elemNode->getDisplaySettings()), 
+					nodeSize(displaySettings->getNodeSize()), horPos(horPosOff + (nodeSize.hasSize ? nodeSize.width : 100)) {
 				state->resolveUnmountedChildren(obj, &childQueue);
 			}
 		};
@@ -221,7 +219,7 @@ struct NodeModule::State {
 				float nodeOffset = VERT_PADDING;
 				float ownOffset = 0;
 				{ // Finishing up current level
-					uint64_t ownHeight = levelCpy.obj->displaySize.hasSize ? levelCpy.obj->displaySize.height : 100;
+					uint64_t ownHeight = levelCpy.nodeSize.hasSize ? levelCpy.nodeSize.height : 100;
 					if (ownHeight > levelCpy.totalHeight) {
 						float childOffset = (ownHeight-levelCpy.totalHeight)/2;
 						nodeOffset += childOffset;
@@ -230,15 +228,21 @@ struct NodeModule::State {
 					} else {
 						ownOffset = (levelCpy.totalHeight-ownHeight)/2;
 					}
-					levelCpy.positioned.push_back(std::pair<node_id, ImVec2>(levelCpy.obj->nodeId, {-static_cast<float>(levelCpy.horPos), ownOffset}));
+					levelCpy.positioned.push_back(std::pair<NodeModule::State::NodeObj*, ImVec2>(levelCpy.obj, {-static_cast<float>(levelCpy.horPos), ownOffset}));
 				}
 				if (procStack.empty()) {
 					// Finish up - Apply positions
 					for (auto positioned : levelCpy.positioned) {
 						positioned.second.y -= ownOffset;
-						ImNodes::SetNodeGridSpacePos(positioned.first, positioned.second);
+						ImNodes::SetNodeGridSpacePos(positioned.first->nodeId, positioned.second);
+						auto* dispSettings = positioned.first->elemNode->getDisplaySettings();
+						dispSettings->setNodePosition({
+							.mode = ElementDisplay::NodePosition::POS_MODE_SET,
+							.x = positioned.second.x,
+							.y = positioned.second.y
+						});
+						dispSettings->reposInProgress = false;
 					}
-					objToAlign->hasPosition = true;
 					break;
 				}
 				// Copying results into parent level
@@ -252,9 +256,10 @@ struct NodeModule::State {
 			} else {
 				// Recurse further in
 				NodeObj* next = currLevel.childQueue.front();
-				if (!next->hasPosition) { // Only eval yet unpositioned elements
+				auto& reposInProgress = next->elemNode->getDisplaySettings()->reposInProgress;
+				if (!reposInProgress) { // Only eval yet unpositioned elements
 					procStack.push(ProcLevel(next, this, currLevel.horPos+80));
-					next->hasPosition = true;
+					reposInProgress = true;
 				}
 				currLevel.childQueue.pop();
 			}
@@ -592,9 +597,9 @@ void NodeModule::render(App* instance) {
 	state->remap(instance);
 
 	if (state->linkedToOutput != nullptr 
-		&& !state->linkedToOutput->hasPosition 
-		&& state->linkedToOutput->displaySize.hasSize) {
-		state->alignNodes(state->linkedToOutput);
+		&& state->linkedToOutput->elemNode->getDisplaySettings()->getNodePosition().mode != ElementDisplay::NodePosition::POS_MODE_SET
+		&& state->linkedToOutput->elemNode->getDisplaySettings()->hasNodeSize()) {
+			state->alignNodes(state->linkedToOutput);
 	}
 
 	int selectNode = -1;
@@ -608,7 +613,12 @@ void NodeModule::render(App* instance) {
 		ImNodes::BeginNode(nodeIds.nodeId);
 
 		ImNodes::BeginNodeTitleBar();
+		const bool originalNodeOpen = !node->getDisplaySettings()->doCollapseNode();
+		bool nodeOpen = originalNodeOpen;
 		ImGui::Checkbox("", &nodeOpen);
+		if (nodeOpen != originalNodeOpen) {
+			node->getDisplaySettings()->setCollapseNode(!nodeOpen);
+		}
 		ImGui::SameLine();
 		ImGui::Text("%s #%i", node->getLabel().name, nodeIds.nodeId);
 		if (nodeIds.elemNode->isUpdatePending()) {
@@ -620,19 +630,19 @@ void NodeModule::render(App* instance) {
 		renderNodeContents(nodeIds, nodeOpen, &selectNode, state, true);
 
 		ImNodes::EndNode();
-		if (!nodeIds.displaySize.hasSize) {
-			auto itemSize = ImGui::GetItemRectSize();
-			nodeIds.displaySize.width = itemSize.x+20;
-			nodeIds.displaySize.height = itemSize.y+20;
-			nodeIds.displaySize.hasSize = true;
+
+		{ // Set Position if not recorded yet
+			auto* display = node->getDisplaySettings();
+			if (!display->hasNodeSize()) {
+				auto itemSize = ImGui::GetItemRectSize();
+				display->setNodeSize(itemSize.x+20, itemSize.y+20);
+			}
 		}
 	}
 
 	{ // Output Node
 		ImNodes::BeginNode(state->outputId);
 		ImNodes::BeginNodeTitleBar();
-		ImGui::Checkbox("", &nodeOpen);
-		ImGui::SameLine();
 		ImGui::Text("Output #%i", state->outputId);
 		if (state->outputNode->hasUpdatePending()) {
 			ImGui::SameLine();
@@ -641,9 +651,7 @@ void NodeModule::render(App* instance) {
 		ImNodes::EndNodeTitleBar();
 		ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
 		ImNodes::BeginInputAttribute(state->outputId);
-		if (nodeOpen) {
-			ImGui::TextUnformatted("master");
-		}
+		ImGui::TextUnformatted("master");
 		ImNodes::EndInputAttribute();
 		ImNodes::PopAttributeFlag();
 		ImNodes::EndNode();

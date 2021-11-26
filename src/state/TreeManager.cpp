@@ -1,4 +1,5 @@
 #include "TreeManager.hpp"
+#include "ElementDisplay.hpp"
 
 #include <iostream>
 
@@ -110,7 +111,7 @@ void TreeManager::notifyForUpdate(ElementNode* node) {
 }
 
 TreeManager::ElementNode::ElementNode(TreeManager* manager, torasu::Element* element, const torasu::ElementFactory* elementFactory) 
-	: manager(manager), element(element), elementFactory(elementFactory) {
+	: manager(manager), element(element), elementFactory(elementFactory), displaySettings(new ElementDisplay(this)) {
 	// Loading slot-index from factory
 	if (elementFactory != nullptr) {
 		auto slotIndex = elementFactory->getSlotIndex();
