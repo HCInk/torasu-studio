@@ -48,6 +48,7 @@ struct NodeModule::State {
 		node_id nodeId;
 		std::map<node_id, std::string> attributeIds; 
 		std::set<NodeObj*> ownedNodes; 
+		ElementDisplay::version_t displayVersion = 0;
 	};
 
 	node_id idCounter = 0;
@@ -169,46 +170,36 @@ struct NodeModule::State {
 		}
 	}
 
-	void resolveUnmountedChildren(NodeModule::State::NodeObj* obj, std::queue<NodeModule::State::NodeObj*>* queueToFill) {
-		for (auto& slot : *obj->elemNode->getSlots()) {
+	void resolveUnmountedChildren(TreeManager::ElementNode* node, std::queue<TreeManager::ElementNode*>* queueToFill) {
+		for (auto& slot : *node->getSlots()) {
 			if (slot.second.mounted == nullptr) continue;
 
 			if (slot.second.ownedByNode) {
-				for (auto* owned : obj->ownedNodes) {
-					if (owned->elemNode == slot.second.mounted) {
-						resolveUnmountedChildren(owned, queueToFill);
-						break;
-					}
-				}
+				resolveUnmountedChildren(slot.second.mounted, queueToFill);
 			} else {
-				auto found = objMap.find(slot.second.mounted);
-				if (found != objMap.end()) {
-					queueToFill->push(found->second);
-				} else {
-					throw std::logic_error("Error resolving non-owned element in resolveUnmountedChildren");
-				}
+				queueToFill->push(slot.second.mounted);
 			}
 		}
 	}
 
-	void alignNodes(NodeModule::State::NodeObj* objToAlign) {
+	void alignNodes(TreeManager::ElementNode* node) {
 		struct ProcLevel {
-			NodeModule::State::NodeObj* obj;
-			std::queue<NodeModule::State::NodeObj*> childQueue;
-			std::vector<std::pair<NodeModule::State::NodeObj*, ImVec2>> positioned;
+			TreeManager::ElementNode* node;
+			std::queue<TreeManager::ElementNode*> childQueue;
+			std::vector<std::pair<TreeManager::ElementNode*, ImVec2>> positioned;
 			uint64_t totalHeight;
 			ElementDisplay* displaySettings;
 			ElementDisplay::NodeSize nodeSize;
 			uint64_t horPos;
-			ProcLevel(NodeModule::State::NodeObj* obj, State* state, size_t horPosOff) 
-				: obj(obj), totalHeight(0), displaySettings(obj->elemNode->getDisplaySettings()), 
+			ProcLevel(TreeManager::ElementNode* node, State* state, size_t horPosOff) 
+				: node(node), totalHeight(0), displaySettings(node->getDisplaySettings()), 
 					nodeSize(displaySettings->getNodeSize()), horPos(horPosOff + (nodeSize.hasSize ? nodeSize.width : 100)) {
-				state->resolveUnmountedChildren(obj, &childQueue);
+				state->resolveUnmountedChildren(node, &childQueue);
 			}
 		};
 		std::stack<ProcLevel> procStack;
 		
-		procStack.push(ProcLevel(objToAlign, this, 0));
+		procStack.push(ProcLevel(node, this, 0));
 
 		static const float VERT_PADDING = 10;
 		for (;;) {
@@ -228,14 +219,13 @@ struct NodeModule::State {
 					} else {
 						ownOffset = (levelCpy.totalHeight-ownHeight)/2;
 					}
-					levelCpy.positioned.push_back(std::pair<NodeModule::State::NodeObj*, ImVec2>(levelCpy.obj, {-static_cast<float>(levelCpy.horPos), ownOffset}));
+					levelCpy.positioned.push_back(std::pair<TreeManager::ElementNode*, ImVec2>(levelCpy.node, {-static_cast<float>(levelCpy.horPos), ownOffset}));
 				}
 				if (procStack.empty()) {
 					// Finish up - Apply positions
 					for (auto positioned : levelCpy.positioned) {
 						positioned.second.y -= ownOffset;
-						ImNodes::SetNodeGridSpacePos(positioned.first->nodeId, positioned.second);
-						auto* dispSettings = positioned.first->elemNode->getDisplaySettings();
+						auto* dispSettings = positioned.first->getDisplaySettings();
 						dispSettings->setNodePosition({
 							.mode = ElementDisplay::NodePosition::POS_MODE_SET,
 							.x = positioned.second.x,
@@ -255,8 +245,8 @@ struct NodeModule::State {
 				aboveLevel.totalHeight += levelCpy.totalHeight+VERT_PADDING*2;
 			} else {
 				// Recurse further in
-				NodeObj* next = currLevel.childQueue.front();
-				auto& reposInProgress = next->elemNode->getDisplaySettings()->reposInProgress;
+				TreeManager::ElementNode* next = currLevel.childQueue.front();
+				auto& reposInProgress = next->getDisplaySettings()->reposInProgress;
 				if (!reposInProgress) { // Only eval yet unpositioned elements
 					procStack.push(ProcLevel(next, this, currLevel.horPos+80));
 					reposInProgress = true;
@@ -599,7 +589,7 @@ void NodeModule::render(App* instance) {
 	if (state->linkedToOutput != nullptr 
 		&& state->linkedToOutput->elemNode->getDisplaySettings()->getNodePosition().mode != ElementDisplay::NodePosition::POS_MODE_SET
 		&& state->linkedToOutput->elemNode->getDisplaySettings()->hasNodeSize()) {
-			state->alignNodes(state->linkedToOutput);
+			state->alignNodes(state->outputNode->getSelected());
 	}
 
 	int selectNode = -1;
@@ -610,10 +600,26 @@ void NodeModule::render(App* instance) {
 		TreeManager::ElementNode* node = nodeEntry.first;
 		State::NodeObj& nodeIds = *nodeEntry.second;
 
+		auto* dispSettings = node->getDisplaySettings();
+		ElementDisplay::NodePosition posSettings = dispSettings->getNodePosition();
+		if (dispSettings->getVersion() != nodeIds.displayVersion) {
+			if (posSettings.mode == ElementDisplay::NodePosition::POS_MODE_UNSET) {
+				ImVec2 currPos = ImNodes::GetNodeGridSpacePos(nodeIds.nodeId);
+				posSettings = {
+					.mode = ElementDisplay::NodePosition::POS_MODE_AUTO,
+					.x = currPos.x,
+					.y = currPos.y,
+				};
+				dispSettings->setNodePosition(posSettings);
+			}
+			ImNodes::SetNodeGridSpacePos(nodeIds.nodeId, {posSettings.x, posSettings.y});
+			nodeIds.displayVersion = dispSettings->getVersion();
+		}
+
 		ImNodes::BeginNode(nodeIds.nodeId);
 
 		ImNodes::BeginNodeTitleBar();
-		const bool originalNodeOpen = !node->getDisplaySettings()->doCollapseNode();
+		const bool originalNodeOpen = !dispSettings->doCollapseNode();
 		bool nodeOpen = originalNodeOpen;
 		ImGui::Checkbox("", &nodeOpen);
 		if (nodeOpen != originalNodeOpen) {
@@ -631,12 +637,23 @@ void NodeModule::render(App* instance) {
 
 		ImNodes::EndNode();
 
-		{ // Set Position if not recorded yet
-			auto* display = node->getDisplaySettings();
-			if (!display->hasNodeSize()) {
-				auto itemSize = ImGui::GetItemRectSize();
-				display->setNodeSize(itemSize.x+20, itemSize.y+20);
+		{ // Update position if moved
+			ImVec2 currPos = ImNodes::GetNodeGridSpacePos(nodeIds.nodeId);
+			if (posSettings.x != currPos.x || posSettings.y != currPos.y) {
+				posSettings = {
+					.mode = ElementDisplay::NodePosition::POS_MODE_SET,
+					.x = currPos.x,
+					.y = currPos.y,
+				};
+				bool upToDate = dispSettings->getVersion() == nodeIds.displayVersion;
+				dispSettings->setNodePosition(posSettings);
+				if (upToDate) nodeIds.displayVersion = dispSettings->getVersion();
 			}
+		}
+
+		if (!dispSettings->hasNodeSize()) { // Set Size if not recorded yet
+			auto itemSize = ImGui::GetItemRectSize();
+			dispSettings->setNodeSize(itemSize.x+20, itemSize.y+20);
 		}
 	}
 

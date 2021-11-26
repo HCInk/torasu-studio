@@ -246,6 +246,7 @@ TreeManager::ElementNode::~ElementNode() {
 	for (auto slot : slots) {
 		if (slot.second.ownedByNode) delete slot.second.mounted;
 	}
+	delete displaySettings;
 }
 
 

@@ -6,7 +6,9 @@
 namespace tstudio {
 
 class ElementDisplay {
-public: // Classes
+public: // Types / Classes
+	typedef size_t version_t;
+
 	struct NodePosition {
 		enum Mode {
 			/** @brief Values have not been set yet */
@@ -17,7 +19,7 @@ public: // Classes
 			/** @brief Node position has been explicity set */
 			POS_MODE_SET,
 
-		} mode;
+		} mode = POS_MODE_UNSET;
 		float x = 0;
 		float y = 0;
 	};
@@ -37,6 +39,8 @@ public: // Public variables
 	bool reposInProgress = false;
 
 private: // Internal variables
+	/** @brief version, incremented on update */
+	version_t version = 1;
 	/** @brief Actual node management object (parent of this ElementDisplay-Object) */
 	TreeManager::ElementNode* node;
 	/** @brief true: node is collapsed, false: node is open */
@@ -55,6 +59,7 @@ public: // Public interface
 	inline NodeSize getNodeSize() { return nodeSize; }
 	inline bool hasNodeSize() { return nodeSize.hasSize; }
 	void setNodeSize(uint32_t width, uint32_t height);
+	inline version_t getVersion() { return version; }
 };
 
 } // namespace tstudio
