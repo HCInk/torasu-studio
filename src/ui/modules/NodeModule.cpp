@@ -1,6 +1,8 @@
 #include "NodeModule.hpp"
 
 #include <map>
+#include <stack>
+#include <queue>
 
 #include <imgui_internal.h>
 #include <torasu/std/Dnum.hpp>
@@ -45,6 +47,12 @@ struct NodeModule::State {
 		node_id nodeId;
 		std::map<node_id, std::string> attributeIds; 
 		std::set<NodeObj*> ownedNodes; 
+		bool hasPosition = false;
+		struct NodeSize {
+			bool hasSize = false;
+			uint32_t width;
+			uint32_t height;
+		} displaySize;
 	};
 
 	node_id idCounter = 0;
@@ -163,6 +171,93 @@ struct NodeModule::State {
 			outputNode->setSelected(nodeObj->elemNode);
 		} else {
 			outputNode->setSelected(nullptr);
+		}
+	}
+
+	void resolveUnmountedChildren(NodeModule::State::NodeObj* obj, std::queue<NodeModule::State::NodeObj*>* queueToFill) {
+		for (auto& slot : *obj->elemNode->getSlots()) {
+			if (slot.second.mounted == nullptr) continue;
+
+			if (slot.second.ownedByNode) {
+				for (auto* owned : obj->ownedNodes) {
+					if (owned->elemNode == slot.second.mounted) {
+						resolveUnmountedChildren(owned, queueToFill);
+						break;
+					}
+				}
+			} else {
+				auto found = objMap.find(slot.second.mounted);
+				if (found != objMap.end()) {
+					queueToFill->push(found->second);
+				} else {
+					throw std::logic_error("Error resolving non-owned element in resolveUnmountedChildren");
+				}
+			}
+		}
+	}
+
+	void alignNodes(NodeModule::State::NodeObj* objToAlign) {
+		struct ProcLevel {
+			NodeModule::State::NodeObj* obj;
+			std::queue<NodeModule::State::NodeObj*> childQueue;
+			std::vector<std::pair<node_id, ImVec2>> positioned;
+			uint64_t totalHeight;
+			uint64_t horPos;
+			ProcLevel(NodeModule::State::NodeObj* obj, State* state, size_t horPosOff) 
+				: obj(obj), totalHeight(0), horPos(horPosOff + (obj->displaySize.hasSize ? obj->displaySize.width : 100)) {
+				state->resolveUnmountedChildren(obj, &childQueue);
+			}
+		};
+		std::stack<ProcLevel> procStack;
+		
+		procStack.push(ProcLevel(objToAlign, this, 0));
+
+		static const float VERT_PADDING = 10;
+		for (;;) {
+			ProcLevel& currLevel = procStack.top();
+			if (currLevel.childQueue.empty()) {
+				ProcLevel levelCpy = currLevel;
+				procStack.pop();
+				float nodeOffset = VERT_PADDING;
+				float ownOffset = 0;
+				{ // Finishing up current level
+					uint64_t ownHeight = levelCpy.obj->displaySize.hasSize ? levelCpy.obj->displaySize.height : 100;
+					if (ownHeight > levelCpy.totalHeight) {
+						float childOffset = (ownHeight-levelCpy.totalHeight)/2;
+						nodeOffset += childOffset;
+						ownOffset -= childOffset;
+						levelCpy.totalHeight = ownHeight;
+					} else {
+						ownOffset = (levelCpy.totalHeight-ownHeight)/2;
+					}
+					levelCpy.positioned.push_back(std::pair<node_id, ImVec2>(levelCpy.obj->nodeId, {-static_cast<float>(levelCpy.horPos), ownOffset}));
+				}
+				if (procStack.empty()) {
+					// Finish up - Apply positions
+					for (auto positioned : levelCpy.positioned) {
+						positioned.second.y -= ownOffset;
+						ImNodes::SetNodeGridSpacePos(positioned.first, positioned.second);
+					}
+					objToAlign->hasPosition = true;
+					break;
+				}
+				// Copying results into parent level
+				ProcLevel& aboveLevel = procStack.top();
+				nodeOffset += aboveLevel.totalHeight;
+				for (auto positioned : levelCpy.positioned) {
+					positioned.second.y += nodeOffset;
+					aboveLevel.positioned.push_back(positioned);
+				}
+				aboveLevel.totalHeight += levelCpy.totalHeight+VERT_PADDING*2;
+			} else {
+				// Recurse further in
+				NodeObj* next = currLevel.childQueue.front();
+				if (!next->hasPosition) { // Only eval yet unpositioned elements
+					procStack.push(ProcLevel(next, this, currLevel.horPos+80));
+					next->hasPosition = true;
+				}
+				currLevel.childQueue.pop();
+			}
 		}
 	}
 
@@ -496,6 +591,12 @@ void renderLinks(const NodeModule::State::NodeObj& nodeObj, NodeModule::State* s
 void NodeModule::render(App* instance) {
 	state->remap(instance);
 
+	if (state->linkedToOutput != nullptr 
+		&& !state->linkedToOutput->hasPosition 
+		&& state->linkedToOutput->displaySize.hasSize) {
+		state->alignNodes(state->linkedToOutput);
+	}
+
 	int selectNode = -1;
 
 	ImNodes::BeginNodeEditor();
@@ -519,6 +620,12 @@ void NodeModule::render(App* instance) {
 		renderNodeContents(nodeIds, nodeOpen, &selectNode, state, true);
 
 		ImNodes::EndNode();
+		if (!nodeIds.displaySize.hasSize) {
+			auto itemSize = ImGui::GetItemRectSize();
+			nodeIds.displaySize.width = itemSize.x+20;
+			nodeIds.displaySize.height = itemSize.y+20;
+			nodeIds.displaySize.hasSize = true;
+		}
 	}
 
 	{ // Output Node
