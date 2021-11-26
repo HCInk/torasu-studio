@@ -30,8 +30,14 @@ void ImageMonitor::enqueueItems(RenderQueue* renderQueue, torasu::Renderable* re
 	if (update && !enqueued && renderQueue->mayEnqueue()) {
 		update = false;
 		(*rctx)[TORASU_STD_CTX_IMG_RATIO] = &ratioNum;
-		renderId = renderQueue->enqueueRender(renderable, rctx, &imgSettings, li);
-		enqueued = true;
+		if (renderable != nullptr) {
+			renderId = renderQueue->enqueueRender(renderable, rctx, &imgSettings, li);
+			enqueued = true;
+		} else {
+			auto* oldImg = currentImage;
+			currentImage = nullptr;
+			if (oldImg != nullptr) delete oldImg;
+		}
 	}
 }
 
