@@ -61,6 +61,17 @@ struct NodeModule::State {
 	NodeObj* linkedToOutput; // init/update on remap
 	const node_id outputId = idCounter++;
 
+	ImNodesEditorContext* imnodesEditorContext;
+
+	State() : imnodesEditorContext(ImNodes::EditorContextCreate()) {}
+
+	~State() {
+		for (auto entry : objMap) {
+			removeNode(entry.second);
+		}
+		ImNodes::EditorContextFree(imnodesEditorContext);
+	}
+
 	bool removeNode(TreeManager::ElementNode* node) {
 		auto found = objMap.find(node);
 		if (found == objMap.end()) return false;
@@ -253,12 +264,6 @@ struct NodeModule::State {
 				}
 				currLevel.childQueue.pop();
 			}
-		}
-	}
-
-	~State() {
-		for (auto entry : objMap) {
-			removeNode(entry.second);
 		}
 	}
 
@@ -584,6 +589,7 @@ void renderLinks(const NodeModule::State::NodeObj& nodeObj, NodeModule::State* s
 } // namespace
 
 void NodeModule::render(App* instance) {
+	ImNodes::EditorContextSet(state->imnodesEditorContext);
 	state->remap(instance);
 
 	if (state->linkedToOutput != nullptr 
