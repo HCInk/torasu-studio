@@ -25,8 +25,8 @@ RawIcon::~RawIcon() {
 
 RawIcon* loadProgramIcon() {
 	std::vector<uint8_t> out_image;
-	uint64_t image_width;
-	uint64_t image_height;
+	unsigned long image_width;
+	unsigned long image_height;
 	decodePNG(out_image, image_width, image_height, TORASU_LOGO_ALPHA_PNG, sizeof(TORASU_LOGO_ALPHA_PNG), true);
 	auto* icon = new RawIcon(image_width, image_height);
 	uint8_t* src = out_image.data();
