@@ -29,6 +29,7 @@ add_executable(torasu-studio
 	${CMAKE_CURRENT_LIST_DIR}/src/state/monitors/ImageMonitor.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/base/base.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/base/glfw_runner.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/ui/base/Icon.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/modules/NodeModule.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/modules/ViewerModule.cpp
 	${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui/imgui.cpp

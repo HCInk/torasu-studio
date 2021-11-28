@@ -10,6 +10,8 @@
 #include <imgui.h>
 #include <stdio.h>
 
+#include "Icon.hpp"
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
@@ -225,7 +227,16 @@ void glfw_run(const render_hooks& setHooks) {
 
 	std::cout << "Create window..." << std::endl;
     // Create window with graphics context
-    window = glfwCreateWindow(1920, 1080, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+    window = glfwCreateWindow(1920, 1080, "TORASU-Studio", NULL, NULL);
+	{
+		auto* icon = loadProgramIcon();
+		GLFWimage icons[1];
+		icons[0].width = icon->width;
+		icons[0].height = icon->height;
+		icons[0].pixels = icon->data;
+		glfwSetWindowIcon(window, 1, icons);
+		delete icon;
+	}
     if (window == NULL)
         throw std::runtime_error("Failed to create glfw-window");
 
