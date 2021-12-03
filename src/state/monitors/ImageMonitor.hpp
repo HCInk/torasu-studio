@@ -20,7 +20,10 @@ private:
 	bool updatedSizeSelection = true;
 	uint32_t selectedWidth = 1920;
 	uint32_t selectedHeight = 1080;
+	bool updatedTimeSelection = true;
+	double time = 0;
 	torasu::tstd::Dnum ratioNum;
+	torasu::tstd::Dnum timeNum;
 	torasu::tstd::Dbimg* currentImage = nullptr;
 	torasu::tstd::Dbimg_FORMAT imgFmt = torasu::tstd::Dbimg_FORMAT(selectedWidth, selectedHeight);
 	torasu::tools::ResultSettingsSingleFmt imgSettings = torasu::tools::ResultSettingsSingleFmt(TORASU_STD_PL_VIS, &imgFmt);
@@ -33,12 +36,19 @@ public:
 	void cancelItems(RenderQueue* renderQueue) override;
 
 	inline torasu::tstd::Dbimg* getCurrentImage() { return currentImage; }
+
 	inline uint32_t getSelectedWidth() { return selectedWidth; }
 	inline uint32_t getSelectedHeight() { return selectedHeight; }
 	inline void setSize(uint32_t selectedWidth, uint32_t selectedHeight) { 
 		this->selectedWidth = selectedWidth;
 		this->selectedHeight = selectedHeight;
 		updatedSizeSelection = true;	
+	}
+
+	inline double getSelectedTime() { return time; }
+	inline void setTime(double time) { 
+		this->time = time;
+		updatedTimeSelection = true;
 	}
 };
 

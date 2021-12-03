@@ -21,22 +21,30 @@ void ImageMonitor::resetResults() {
 }
 
 void ImageMonitor::enqueueItems(RenderQueue* renderQueue, torasu::Renderable* renderable, torasu::LogInstruction li, torasu::RenderContext* rctx) {
-	if (updatedSizeSelection && !enqueued) {
-		imgFmt = torasu::tstd::Dbimg_FORMAT(selectedWidth, selectedHeight);
-		ratioNum = static_cast<double>(selectedWidth)/selectedHeight;
-		update = true;
-		updatedSizeSelection = false;
-	}
-	if (update && !enqueued && renderQueue->mayEnqueue()) {
-		update = false;
-		(*rctx)[TORASU_STD_CTX_IMG_RATIO] = &ratioNum;
-		if (renderable != nullptr) {
-			renderId = renderQueue->enqueueRender(renderable, rctx, &imgSettings, li);
-			enqueued = true;
-		} else {
-			auto* oldImg = currentImage;
-			currentImage = nullptr;
-			if (oldImg != nullptr) delete oldImg;
+	if (!enqueued) {
+		if (updatedSizeSelection) {
+			imgFmt = torasu::tstd::Dbimg_FORMAT(selectedWidth, selectedHeight);
+			ratioNum = static_cast<double>(selectedWidth)/selectedHeight;
+			update = true;
+			updatedSizeSelection = false;
+		}
+		if (updatedTimeSelection) {
+			timeNum = time;
+			update = true;
+			updatedTimeSelection = false;
+		} 
+		if (update && renderQueue->mayEnqueue()) {
+			update = false;
+			(*rctx)[TORASU_STD_CTX_TIME] = &timeNum;
+			(*rctx)[TORASU_STD_CTX_IMG_RATIO] = &ratioNum;
+			if (renderable != nullptr) {
+				renderId = renderQueue->enqueueRender(renderable, rctx, &imgSettings, li);
+				enqueued = true;
+			} else {
+				auto* oldImg = currentImage;
+				currentImage = nullptr;
+				if (oldImg != nullptr) delete oldImg;
+			}
 		}
 	}
 }

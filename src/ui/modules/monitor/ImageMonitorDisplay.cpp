@@ -132,7 +132,7 @@ void ImageMonitorDisplay::render() {
 	static int item_current_idx = 2; // Here we store our selection data as an index.
 	const char* combo_preview_value = items[item_current_idx];  // Pass in the preview value visible before opening the combo (it could be anything)
 	ImGui::PushItemWidth(100.0f);
-	if (ImGui::BeginCombo(" ", combo_preview_value))
+	if (ImGui::BeginCombo("###size-select", combo_preview_value))
 	{
 		for (int n = 0; n < IM_ARRAYSIZE(items); n++)
 		{
@@ -153,6 +153,17 @@ void ImageMonitorDisplay::render() {
 
 	ImGui::SameLine();
 	ImGui::Text("%u x %u", selectedWidth, selectedHeight);
+
+	ImGui::SameLine();
+	ImGui::PushItemWidth(100.0f);
+	float timeSelection = imageMon->getSelectedTime();
+	float originalTimeSelection = timeSelection;
+	ImGui::DragFloat("###time", &timeSelection, 0.01, 0.0f, 100000.0f, "T %.02f");
+	if (timeSelection != originalTimeSelection) {
+		imageMon->setTime(timeSelection);
+	}
+	ImGui::PopItemWidth();
+
 };
 
 
