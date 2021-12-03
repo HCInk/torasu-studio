@@ -12,54 +12,29 @@
 #include "../../state/App.hpp"
 #include "../../state/TreeManager.hpp"
 #include "../../state/ElementDisplay.hpp"
+#include "../components/Symbols.hpp"
+#include "../components/NodeDisplayObj.hpp"
+#include "../components/ElementEditor.hpp"
 
 #define DEBUG_LOG true
-#define DO_SNAP false
 
 #if DEBUG_LOG
 #include <iostream>
 #endif
+
 namespace tstudio {
 
-static void ApplyingIcon() {
-	ImVec2 circlePadding(0.0f, 2.0f);
-	const static float circleSize = 11.0f;
-	ImDrawList* drawList = ImGui::GetWindowDrawList();
-	ImGuiWindow* window = ImGui::GetCurrentWindow();
-	if (!window->SkipItems) {
-		auto cursorPos = window->DC.CursorPos; // ImGui::GetCursorPos();
-		ImVec2 endPos(cursorPos.x + circleSize + circlePadding.x*2, cursorPos.y + circleSize + circlePadding.y*2);
-		ImVec2 center(cursorPos.x + circleSize/2 + circlePadding.x, cursorPos.y + circleSize/2 + circlePadding.y);
-		ImRect bb(cursorPos, endPos);
-		ImGui::Dummy(ImVec2(circleSize,circleSize));
-		// ImGui::ItemSize(bb);
-		drawList->AddCircleFilled(center, circleSize/2, IM_COL32(255, 100, 100, 255));
-		// drawList->AddCircle(center, circleSize/2, IM_COL32(255, 255, 255, 255), 0, 1.5f);
-		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip("Applying changes...");
-		}
-	}
-}
-
 struct NodeModule::State {
-	typedef int node_id;
-	struct NodeObj {
-		TreeManager::ElementNode* elemNode;
-		node_id nodeId;
-		std::map<node_id, std::string> attributeIds; 
-		std::set<NodeObj*> ownedNodes; 
-		ElementDisplay::version_t displayVersion = 0;
-	};
 
-	node_id idCounter = 0;
+	NodeDisplayObj::node_id idCounter = 0;
 
-	std::map<TreeManager::ElementNode*, NodeObj*> objMap; // init/update on remap
-	std::map<node_id, NodeObj*> idMap; // init/update on remap
+	std::map<TreeManager::ElementNode*, NodeDisplayObj*> objMap; // init/update on remap
+	std::map<NodeDisplayObj::node_id, NodeDisplayObj*> idMap; // init/update on remap
 	bool needsRemap = true;
 	tstudio::TreeManager::version_t treeVersion; // init/update on remap
 	TreeManager::OutputNode* outputNode; // init/update on remap
-	NodeObj* linkedToOutput; // init/update on remap
-	const node_id outputId = idCounter++;
+	NodeDisplayObj* linkedToOutput; // init/update on remap
+	const NodeDisplayObj::node_id outputId = idCounter++;
 
 	ImNodesEditorContext* imnodesEditorContext;
 
@@ -75,13 +50,13 @@ struct NodeModule::State {
 	bool removeNode(TreeManager::ElementNode* node) {
 		auto found = objMap.find(node);
 		if (found == objMap.end()) return false;
-		NodeObj* toRemove = found->second;
+		NodeDisplayObj* toRemove = found->second;
 		removeNode(toRemove);
 		return true;
 	}
 
-	void removeNode(NodeObj* toRemove) {
-		for (NodeObj* owned : toRemove->ownedNodes) {
+	void removeNode(NodeDisplayObj* toRemove) {
+		for (NodeDisplayObj* owned : toRemove->ownedNodes) {
 			removeNode(owned);
 		}
 		for (auto attrIds : toRemove->attributeIds) {
@@ -92,10 +67,10 @@ struct NodeModule::State {
 		delete toRemove;
 	}
 
-	void updateNodeContent(NodeObj* node) {
+	void updateNodeContent(NodeDisplayObj* node) {
 		// Adjusting attributes
 		auto& attributeIds = node->attributeIds;
-		std::vector<node_id> ids;
+		std::vector<NodeDisplayObj::node_id> ids;
 		for (auto idEntry : attributeIds) {
 			ids.push_back(idEntry.first);
 		}
@@ -106,20 +81,20 @@ struct NodeModule::State {
 		if (sizeDelta < 0) { // shrink
 			for (size_t i = ids.size(); i > neededSize; ) {
 				i--;
-				node_id toErase = ids[i];
+				NodeDisplayObj::node_id toErase = ids[i];
 				idMap.erase(toErase);
 				attributeIds.erase(toErase);
 			}
 		} else { // grow
 			for (size_t i = 0; i < sizeDelta; i++) {
-				node_id newId = idCounter++;
+				NodeDisplayObj::node_id newId = idCounter++;
 				idMap[newId] = node;
 				ids.push_back(newId);
 			}
 		}
 
 		size_t idIndex = 0;
-		std::set<NodeObj*> unmatchedOwned = node->ownedNodes;
+		std::set<NodeDisplayObj*> unmatchedOwned = node->ownedNodes;
 		for (auto slot : slotMap) {
 			// Set attribute-ids
 			attributeIds[ids[idIndex]] = slot.first;
@@ -127,8 +102,8 @@ struct NodeModule::State {
 
 			// Managed owned nodes
 			if (slot.second.ownedByNode) {
-				NodeObj* ownedObj = nullptr;
-				for (NodeObj* currOwned : unmatchedOwned) {
+				NodeDisplayObj* ownedObj = nullptr;
+				for (NodeDisplayObj* currOwned : unmatchedOwned) {
 					if (slot.second.mounted == currOwned->elemNode) {
 						ownedObj = currOwned;
 						break;
@@ -137,7 +112,7 @@ struct NodeModule::State {
 				if (ownedObj != nullptr) { // Already existed before
 					unmatchedOwned.erase(ownedObj);
 				} else { // New
-					ownedObj = new NodeObj();
+					ownedObj = new NodeDisplayObj();
 					ownedObj->elemNode = slot.second.mounted;
 					ownedObj->nodeId = idCounter++;
 					node->ownedNodes.insert(ownedObj);
@@ -151,13 +126,13 @@ struct NodeModule::State {
 		}
 	}
 
-	NodeObj* updateNode(TreeManager::ElementNode* node) {
+	NodeDisplayObj* updateNode(TreeManager::ElementNode* node) {
 		auto found = objMap.find(node);
-		NodeObj* currNode;
+		NodeDisplayObj* currNode;
 		if (found != objMap.end()) {
 			currNode = found->second;
 		} else {
-			currNode = new NodeObj(); 
+			currNode = new NodeDisplayObj(); 
 			currNode->elemNode = node;
 			currNode->nodeId = idCounter++;
 			// XXX To be more easy viewable
@@ -172,7 +147,7 @@ struct NodeModule::State {
 		return currNode;
 	}
 
-	void setLinkedToOutput(NodeObj* nodeObj) {
+	void setLinkedToOutput(NodeDisplayObj* nodeObj) {
 		linkedToOutput = nodeObj;
 		if (nodeObj != nullptr) {
 			outputNode->setSelected(nodeObj->elemNode);
@@ -317,257 +292,11 @@ void NodeModule::onMount() {}
 
 namespace {
 
-void renderDataEditor(TreeManager::ElementNode* node) {
-	auto* currData = node->getCurrentData();
-	if (currData == nullptr) return;
-
-	if (node->getType() == "STD::RNUM") {
-		auto* numData = dynamic_cast<torasu::tstd::Dnum*>(currData);
-		if (numData == nullptr) return;
-		float value = numData->getNum();
-		ImGui::PushItemWidth(100.0f);
-		if (ImGui::DragFloat("Value", &value, 0.01, -30.0f, 30.0f, "%.03f")) {
-			(*dynamic_cast<torasu::tstd::Dnum*>(node->getDataForModification())) = value;
-		}
-		ImGui::PopItemWidth();
-	} else if (node->getType() == "STD::RSTRING") {
-		auto* strData = dynamic_cast<torasu::tstd::Dstring*>(currData);
-		if (strData == nullptr) return;
-		const std::string& currString = strData->getString();
-		size_t buffSize = currString.size()+1024*10;
-		char buffer[buffSize+1];
-		std::copy_n(currString.c_str(), currString.size(), buffer);
-		buffer[currString.size()] = 0x00;
-		ImGui::PushItemWidth(100.0f);
-		if (ImGui::InputText("Value", buffer, buffSize)) {
-			node->setModifiedData(new torasu::tstd::Dstring(std::string(buffer)));
-		}
-		ImGui::PopItemWidth();
-	}
-}
-
-void renderNodeContents(const NodeModule::State::NodeObj& nodeIds, bool nodeOpen, int* selectNode, NodeModule::State* state, bool renderOutput) {
-	if (nodeOpen) {
-		ImVec2 widthSpacer = {150.0, 0.0};
-		ImGui::Dummy(widthSpacer);
-
-		// Data stuff
-		renderDataEditor(nodeIds.elemNode);
-	}
-
-	// Attribute / Slot stuff
-	if (!nodeIds.attributeIds.empty()) {
-		auto* slots = nodeIds.elemNode->getSlots();
-		size_t attrIndex = 0;
-#if DO_SNAP
-		ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkCreationOnSnap);
-#endif
-		ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
-		for (auto attrEntry : nodeIds.attributeIds) {
-			TreeManager::ElementNode* connectedNode = nullptr;
-			const torasu::ElementFactory::SlotDescriptor* slotDescriptor = nullptr;
-			bool ownedByNode = false;
-			auto foundSlot = slots->find(attrEntry.second);
-			if (foundSlot != slots->end()) {
-				connectedNode = foundSlot->second.mounted;
-				slotDescriptor = foundSlot->second.descriptor;
-				ownedByNode = foundSlot->second.ownedByNode;
-			}
-
-			std::string slotLabel;
-			std::string slotDescription;
-			if (slotDescriptor != nullptr) {
-				slotLabel = slotDescriptor->label.name;
-				if (slotDescriptor->label.description != nullptr) 
-					slotDescription = slotDescriptor->label.description;
-			} else {
-				slotLabel = attrEntry.second;
-			}
-
-			if (ownedByNode) {
-				ImGui::PushID(attrIndex);
-
-				if (connectedNode->getType() == "STD::RNUM") {
-
-					ImNodes::BeginInputAttribute(attrEntry.first, ImNodesPinShape_CircleFilled);
-					if (nodeOpen) {
-						auto* currData = connectedNode->getCurrentData();
-						if (currData != nullptr) if (auto* numData = dynamic_cast<torasu::tstd::Dnum*>(currData)) {
-							float value = numData->getNum();
-							ImGui::PushItemWidth(100.0f);
-
-							if (ImGui::DragFloat(slotLabel.c_str(), &value, 0.01, -30.0f, 30.0f, "%.03f")) {
-								(*dynamic_cast<torasu::tstd::Dnum*>(connectedNode->getDataForModification())) = value;
-							}
-
-							if (ImGui::IsItemHovered() && !slotDescription.empty()) {
-								ImGui::SetTooltip("%s", slotDescription.c_str());
-							}
-							ImGui::PopItemWidth();
-						}
-						if (connectedNode->isUpdatePending()) {
-							ImGui::SameLine();
-							ApplyingIcon();
-						}
-					}
-					ImNodes::EndInputAttribute();
-
-				}  else if (connectedNode->getType() == "STD::RSTRING") {
-
-					ImNodes::BeginInputAttribute(attrEntry.first, ImNodesPinShape_CircleFilled);
-					if (nodeOpen) {
-						auto* currData = connectedNode->getCurrentData();
-						if (currData != nullptr) if (auto* strData = dynamic_cast<torasu::tstd::Dstring*>(currData)) {
-							const std::string& currString = strData->getString();
-							size_t buffSize = currString.size()+1024*10;
-							char buffer[buffSize+1];
-							std::copy_n(currString.c_str(), currString.size(), buffer);
-							buffer[currString.size()] = 0x00;
-							ImGui::PushItemWidth(100.0f);
-							
-							if (ImGui::InputText(slotLabel.c_str(), buffer, buffSize)) {
-								connectedNode->setModifiedData(new torasu::tstd::Dstring(std::string(buffer)));
-							}
-
-							if (ImGui::IsItemHovered() && !slotDescription.empty()) {
-								ImGui::SetTooltip("%s", slotDescription.c_str());
-							}
-							ImGui::PopItemWidth();
-						}
-						if (connectedNode->isUpdatePending()) {
-							ImGui::SameLine();
-							ApplyingIcon();
-						}
-					}
-					ImNodes::EndInputAttribute();
-
-				} else {
-
-					ImDrawList* draw_list = ImGui::GetWindowDrawList();
-					ImDrawListSplitter splitter;
-					splitter.Split(draw_list, 2);
-					// draw_list->ChannelsSplit(2);
-
-					// render group content
-					splitter.SetCurrentChannel(draw_list, 1);
-					// draw_list->ChannelsSetCurrent(1);
-					ImGui::BeginGroup();
-					
-					if (nodeOpen) {
-						ImGui::Dummy(ImVec2(0,2));
-						ImGui::Text("%s", slotLabel.c_str());
-						if (ImGui::IsItemHovered() && !slotDescription.empty()) {
-							ImGui::SetTooltip("%s", slotDescription.c_str());
-						}
-						ImGui::SameLine();
-						ImGui::Text("[%s] #%i", connectedNode->getLabel().name, attrEntry.first);
-						if (connectedNode->isUpdatePending()) {
-							ImGui::SameLine();
-							ApplyingIcon();
-						}
-					}
-
-					NodeModule::State::NodeObj* foundNodeObj = nullptr;
-
-					for (auto owned : nodeIds.ownedNodes) {
-						if (connectedNode == owned->elemNode) {
-							foundNodeObj = owned;
-							break;
-						}
-					}
-
-					if (foundNodeObj != nullptr) {
-						renderNodeContents(*foundNodeObj, nodeOpen, selectNode, state, false);
-					} else {
-						ImGui::TextUnformatted("[Unresolvable!]");
-					}
-
-					if (nodeOpen) {
-						ImGui::Dummy(ImVec2(0,2));
-					}
-
-					// auto cursorPos = window->DC.CursorPos;
-					// window->DrawList->Add(ImVec2(cursorPos.x, cursorPos.y), 10, IM_COL32(255, 100, 100, 255));
-					ImGui::EndGroup();
-					
-					// render a background quad
-					splitter.SetCurrentChannel(draw_list, 0);
-					// draw_list->ChannelsSetCurrent(0);
-
-					if (nodeOpen) {
-						auto min = ImGui::GetItemRectMin();
-						min.x -= 4;
-						auto max = ImGui::GetItemRectMax();
-						max.x += 4;
-						ImGui::GetWindowDrawList()->AddRectFilled(min, max, IM_COL32(0, 0, 0, 50), 4);
-					}
-
-					splitter.Merge(draw_list);
-					// draw_list->ChannelsMerge();
-
-				}
-
-				ImGui::PopID();
-			} else {
-				ImNodes::BeginInputAttribute(attrEntry.first, ImNodesPinShape_CircleFilled);
-
-				if (nodeOpen) {
-					ImGui::Text("%s", slotLabel.c_str());
-					if (ImGui::IsItemHovered() && !slotDescription.empty()) {
-						ImGui::SetTooltip("%s", slotDescription.c_str());
-					}
-					ImGui::SameLine();
-					if (connectedNode != nullptr) {
-						ImGui::Text("[%s]", connectedNode->getLabel().name);
-						if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(0)) {
-							auto foundConnected = state->objMap.find(connectedNode);
-							if (foundConnected != state->objMap.end()) {
-								*selectNode = foundConnected->second->nodeId;
-							}
-						}
-					} else {
-						ImGui::PushItemWidth(100.0f);
-						ImGui::Text("[UNLINKED]");
-						// ImGui::DragFloat("", &someFloat, 0.01, -30.0f, 30.0f, "%.03f");
-						ImGui::PopItemWidth();
-					}
-				}
-				ImNodes::EndInputAttribute();
-			}
-
-			auto size = ImGui::GetItemRectSize();
-
-			if (renderOutput && attrIndex == 0) {
-				ImNodes::PopAttributeFlag();
-				ImGui::SameLine();
-				ImNodes::BeginOutputAttribute(nodeIds.nodeId);
-				ImNodes::EndOutputAttribute();
-				ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
-			}
-
-			if (nodeOpen) {
-				float addedHeight = std::max(15.0f-size.y, 0.0f);
-				ImGui::SetCursorPosY(ImGui::GetCursorPosY()+addedHeight);
-				// std::cout << "size " << nodeId << "-" << i << ": " << " " << addedHeight << std::endl;
-			}
-			attrIndex++;
-		}
-
-		ImNodes::PopAttributeFlag();
-#if DO_SNAP
-		ImNodes::PopAttributeFlag();
-#endif
-	} else if (renderOutput) {
-		ImNodes::BeginOutputAttribute(nodeIds.nodeId);
-		ImNodes::EndOutputAttribute();
-	}
-}
-
-void renderLinks(const NodeModule::State::NodeObj& nodeObj, NodeModule::State* state) {
+void renderLinks(const NodeDisplayObj& nodeObj, NodeModule::State* state) {
 	auto* slots = nodeObj.elemNode->getSlots(); 
 
 	for (auto attrEntry : nodeObj.attributeIds) {
-		NodeModule::State::State::node_id connectedNodeId = -1;
+		NodeDisplayObj::node_id connectedNodeId = -1;
 		
 		auto foundSlot = slots->find(attrEntry.second);
 		if (foundSlot != slots->end() && foundSlot->second.mounted != nullptr && !foundSlot->second.ownedByNode) {
@@ -581,7 +310,7 @@ void renderLinks(const NodeModule::State::NodeObj& nodeObj, NodeModule::State* s
 		}
 	}
 
-	for (NodeModule::State::NodeObj* owned : nodeObj.ownedNodes) {
+	for (NodeDisplayObj* owned : nodeObj.ownedNodes) {
 		renderLinks(*owned, state);
 	}
 }
@@ -598,13 +327,13 @@ void NodeModule::render(App* instance) {
 			state->alignNodes(state->outputNode->getSelected());
 	}
 
-	int selectNode = -1;
+	TreeManager::ElementNode* selectNode = nullptr;
 
 	ImNodes::BeginNodeEditor();
 
 	for (auto nodeEntry : state->objMap) {
 		TreeManager::ElementNode* node = nodeEntry.first;
-		State::NodeObj& nodeIds = *nodeEntry.second;
+		NodeDisplayObj& nodeIds = *nodeEntry.second;
 
 		auto* dispSettings = node->getDisplaySettings();
 		ElementDisplay::NodePosition posSettings = dispSettings->getNodePosition();
@@ -635,11 +364,11 @@ void NodeModule::render(App* instance) {
 		ImGui::Text("%s #%i", node->getLabel().name, nodeIds.nodeId);
 		if (nodeIds.elemNode->isUpdatePending()) {
 			ImGui::SameLine();
-			ApplyingIcon();
+			Symbols::ApplyingIcon();
 		}
 		ImNodes::EndNodeTitleBar();
 
-		renderNodeContents(nodeIds, nodeOpen, &selectNode, state, true);
+		ElementEditor::renderNodeContents(nodeIds, nodeOpen, &selectNode, state, true);
 
 		ImNodes::EndNode();
 
@@ -669,7 +398,7 @@ void NodeModule::render(App* instance) {
 		ImGui::Text("Output #%i", state->outputId);
 		if (state->outputNode->hasUpdatePending()) {
 			ImGui::SameLine();
-			ApplyingIcon();
+			Symbols::ApplyingIcon();
 		}
 		ImNodes::EndNodeTitleBar();
 		ImNodes::PushAttributeFlag(ImNodesAttributeFlags_EnableLinkDetachWithDragClick);
@@ -692,7 +421,7 @@ void NodeModule::render(App* instance) {
 	ImNodes::EndNodeEditor();
 	ImVec2 editorSize = ImGui::GetItemRectSize();
 
-	State::node_id linkReciever;
+	NodeDisplayObj::node_id linkReciever;
 	if (ImNodes::IsLinkDestroyed(&linkReciever)) {
 #if DEBUG_LOG
 		std::cout << "Node-View: Destory link " << linkReciever << std::endl;
@@ -713,7 +442,7 @@ void NodeModule::render(App* instance) {
 			}
 		}
 	}
-	State::node_id linkedNode;
+	NodeDisplayObj::node_id linkedNode;
 	if (ImNodes::IsLinkCreated(&linkedNode, &linkReciever)) {
 #if DEBUG_LOG
 		std::cout << "Node-View: Create link " << linkedNode << "-" << linkReciever << std::endl;
@@ -741,16 +470,20 @@ void NodeModule::render(App* instance) {
 		}
 		// links.push_back(std::make_pair(start_attr, end_attr));
 	}
-	if (selectNode >= 0) {
-		ImNodes::ClearNodeSelection();
-		ImNodes::SelectNode(selectNode);
-		ImVec2 selectedPos = ImNodes::GetNodeGridSpacePos(selectNode);
-		selectedPos.x *= -1;
-		selectedPos.y *= -1;
-		selectedPos.x += editorSize.x/2-70;
-		selectedPos.y += editorSize.y/2-50;
-		ImNodes::EditorContextResetPanning(selectedPos);
-		selectNode = -1;
+	if (selectNode != nullptr) {
+		auto foundConnected = state->objMap.find(selectNode);
+		if (foundConnected != state->objMap.end()) {
+			int selectNodeId = foundConnected->second->nodeId;
+			ImNodes::ClearNodeSelection();
+			ImNodes::SelectNode(selectNodeId);
+			ImVec2 selectedPos = ImNodes::GetNodeGridSpacePos(selectNodeId);
+			selectedPos.x *= -1;
+			selectedPos.y *= -1;
+			selectedPos.x += editorSize.x/2-70;
+			selectedPos.y += editorSize.y/2-50;
+			ImNodes::EditorContextResetPanning(selectedPos);
+		}
+		selectNode = nullptr;
 	}
 }
 

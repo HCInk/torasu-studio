@@ -8,7 +8,7 @@
 
 namespace tstudio {
 
-class ElementDisplay; // from #include "TreeManager.hpp"
+class ElementDisplay; // from #include "ElementDisplay.hpp"
 
 class TreeManager {
 public:

@@ -32,6 +32,8 @@ add_executable(torasu-studio
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/base/Icon.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/modules/NodeModule.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/ui/modules/ViewerModule.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/ui/components/Symbols.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/ui/components/ElementEditor.cpp
 	${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui/imgui.cpp
 	${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui/imgui_draw.cpp
 	${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui/imgui_tables.cpp
