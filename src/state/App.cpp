@@ -5,16 +5,16 @@
 #include <memory>
 
 #include <torasu/torasu.hpp>
-
-// XXX For creating an test-tree
-#include <torasu/std/torasu_full.hpp>
-#include <torasu/mod/imgc/imgc_full.hpp>
+#include <torasu/std/EIcore_runner.hpp>
+#include <torasu/std/LIcore_logger.hpp>
 
 #include "TreeManager.hpp"
 #include "RenderQueue.hpp"
 #include "monitors/Monitor.hpp"
 #include "monitors/NumberMonitor.hpp"
 #include "monitors/ImageMonitor.hpp"
+
+#include "examples/Examples.cpp"
 
 namespace tstudio {
 
@@ -58,40 +58,10 @@ App::App() {
 	}
 	std::cout << "Loaded " << std::to_string(state->elementFactories.size()) 
 				<< " element-types" << std::endl;
- 
-	auto* num1 = new torasu::tstd::Rnum(0.5);
-	// auto* num2 = new torasu::tstd::Rnum(2.0);
-	// auto* mul1 = new torasu::tstd::Rmultiply(num1, num2);
-	// auto* mul2 = new torasu::tstd::Rmultiply(mul1, 10);
-	// auto* sub1 = new torasu::tstd::Rsubtract(mul2, 20);
-	auto* color1 = new imgc::Rcolor(1.0, 1.0, 0.8, num1);
-	// auto* color2 = new imgc::Rcolor(1.0, num2, 0.3, 1.0);
-	auto* video = new imgc::Rmedia_file(torasu::tools::inlineRenderable(new torasu::tstd::Rnet_file(
-		"https://wasm.hcink.org/torasu/sample-mp4-bunny.mp4"
-	)));
-	auto* image = new torasu::tstd::Rmod_rctx(video, torasu::tools::inlineRenderable(new torasu::tstd::Rnum(0)), TORASU_STD_CTX_TIME, TORASU_STD_PL_NUM);
-	auto* colorMul = new torasu::tstd::Rmultiply(image, color1);
-	auto* text = new imgc::Rtext("TEST");
-	auto* textRnd = new imgc::Rgraphics(text);
-	auto* roundVal = new torasu::tstd::Rnum(1.0);
-	auto* circle = new imgc::Rrothumbus(roundVal);
-	auto* circleRnd = new imgc::Rgraphics(circle);
-	auto* circleAlign = new imgc::Rauto_align2d(circleRnd, 0.0, 0.0, 0.0, 1.0);
-	auto* circleTransform = new imgc::Rtransform(
-		torasu::tools::inlineRenderable(circleAlign), 
-		torasu::tools::inlineRenderable(new torasu::tstd::Rmatrix({1.0, 0.0, 0.0, 0.0, 1.0, 0.0}, 2)));
-	auto* layers = new imgc::Rlayer(torasu::tools::inlineRenderable(
-		new torasu::tstd::Rlist({
-			circleTransform,
-			colorMul,
-			// textRnd,
-		})
-	));
-	auto* encode = new imgc::Rmedia_creator(layers, "mp4", 0.0, 10.0, 25.0, 1280, 720, 4000*1000);
+	
+	examples::LoadedExample loadedExample = examples::makeSelectedExample();
 
-	state->treeManager = new TreeManager(state->elementFactories, 
-		{/* imageFile, */ video, image, num1, /* num2, */ /* mul1, mul2, sub1, */ color1/* , color2 */, colorMul, text, textRnd, layers, encode, circleRnd, circle, roundVal, /* circleAlign, */ circleTransform},
-		encode);
+	state->treeManager = new TreeManager(state->elementFactories, loadedExample.managedElements, loadedExample.root);
 	state->runner = std::unique_ptr<torasu::tstd::EIcore_runner>(new torasu::tstd::EIcore_runner((size_t)1));
 	state->runnerInterface = std::unique_ptr<torasu::ExecutionInterface>(state->runner->createInterface());
 	state->renderQueue = new RenderQueue(state->runnerInterface.get());
