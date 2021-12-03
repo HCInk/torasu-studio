@@ -22,7 +22,7 @@
 #include "../../../thirdparty/imnodes/imnodes.h"
 
 #include "../modules/NodeModule.hpp"
-#include "../modules/ViewerModule.hpp"
+#include "../modules/monitor/MonitorModule.hpp"
 
 namespace tstudio {
 static void main_loop();
@@ -66,7 +66,7 @@ tstudio::TextureId image_texture_id;
 static bool reloadLayout = true;
 static NodeModule nodeModule = NodeModule();
 static NodeModule nodeModuleSecondary = NodeModule();
-static ViewerModule viewerModule = ViewerModule();
+static MonitorModule viewerModule = MonitorModule();
 
 static void post_imgui_init(const tstudio::blank_callbacks& callbacks) {
     // Load Fonts
