@@ -15,6 +15,7 @@ namespace tstudio {
 struct blank_callbacks;
 class TreeManager;
 class Monitor;
+class ElementIndex;
 
 class App {
 private:
@@ -39,6 +40,7 @@ public:
 
 	TreeManager* getTreeManager();
 	Monitor* getMainMonitor();
+	ElementIndex* getElementIndex();
 
 
 	double currentNumber = 0;

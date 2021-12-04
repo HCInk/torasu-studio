@@ -5,8 +5,8 @@
 
 namespace tstudio {
 
-TreeManager::TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements, torasu::Element* root) 
-	: factories(factories) {
+TreeManager::TreeManager(const ElementIndex* elementIndex, std::vector<torasu::Element*> elements, torasu::Element* root) 
+	: elementIndex(elementIndex) {
 	for (auto* element : elements) {
 		addNode(element, nullptr, true);
 	}
@@ -31,11 +31,15 @@ TreeManager::~TreeManager() {
 	}
 }
 
-void TreeManager::addNode(torasu::Element* element, const torasu::ElementFactory* factory, bool lateInit) {
-	if (factory == nullptr) factory = getFactoryForElement(element);
+TreeManager::ElementNode* TreeManager::addNode(torasu::Element* element, const torasu::ElementFactory* factory, bool lateInit) {
+	if (factory == nullptr) factory = elementIndex->getFactoryForElement(element);
 	auto* node = new TreeManager::ElementNode(this, element, factory);
-	if (!lateInit) node->updateLinks();
+	if (!lateInit) {
+		node->updateLinks();
+		version++;
+	}
 	managedElements[element] = node;
+	return node;
 }
 
 bool TreeManager::hasUpdates() {
@@ -96,11 +100,6 @@ TreeManager::version_t TreeManager::getVersion() {
 	return version;
 }
 
-const torasu::ElementFactory* TreeManager::getFactoryForElement(/* const */ torasu::Element* element) {
-	auto found = factories.find(element->getType().str);
-	return found != factories.end() ? found->second : nullptr;
-}
-
 TreeManager::ElementNode* TreeManager::getStoredInstance(const torasu::Element* element) {
 	auto found = managedElements.find(element);
 	return found != managedElements.end() ? found->second : nullptr;
@@ -139,7 +138,7 @@ void TreeManager::ElementNode::updateLinks() {
 				slot.mounted = foundStored;
 			} else {
 				slot.ownedByNode = true;
-				slot.mounted = new ElementNode(manager, elemInSlot, manager->getFactoryForElement(elemInSlot));
+				slot.mounted = new ElementNode(manager, elemInSlot, manager->elementIndex->getFactoryForElement(elemInSlot));
 				slot.mounted->updateLinks();
 			}
 		} else {

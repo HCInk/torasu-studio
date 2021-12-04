@@ -6,19 +6,21 @@
 
 #include <torasu/torasu.hpp>
 
+#include "ElementIndex.hpp"
+
 namespace tstudio {
 
 class ElementDisplay; // from #include "ElementDisplay.hpp"
 
 class TreeManager {
 public:
-	TreeManager(const std::map<std::string, const torasu::ElementFactory*>& factories, std::vector<torasu::Element*> elements = {}, torasu::Element* root = nullptr);
+	TreeManager(const ElementIndex* index, std::vector<torasu::Element*> elements = {}, torasu::Element* root = nullptr);
 	~TreeManager();
 
 	class ElementNode;
 	class OutputNode;
 
-	void addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr, bool lateInit = false);
+	TreeManager::ElementNode* addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr, bool lateInit = false);
 	bool hasUpdates();
 	void applyUpdates();
 	std::vector<ElementNode*> getManagedNodes();
@@ -90,13 +92,12 @@ public:
 private:
 	std::vector<ElementNode*> pendingUpdates;
 	std::map<const torasu::Element*, ElementNode*> managedElements;
-	std::map<std::string, const torasu::ElementFactory*> factories;
 	OutputNode outputNode;
 
 	version_t version = 0;
 
 protected:
-	const torasu::ElementFactory* getFactoryForElement(/* const */ torasu::Element* element);
+	const ElementIndex* elementIndex;
 	ElementNode* getStoredInstance(const torasu::Element* element);
 	void notifyForUpdate(ElementNode* node);
 };

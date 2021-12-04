@@ -4,7 +4,7 @@
 #include <stack>
 #include <queue>
 
-#include <imgui_internal.h>
+#include <imgui.h>
 #include <torasu/std/Dnum.hpp>
 #include <torasu/std/Dstring.hpp>
 
@@ -12,6 +12,7 @@
 #include "../../state/App.hpp"
 #include "../../state/TreeManager.hpp"
 #include "../../state/ElementDisplay.hpp"
+#include "../../state/ElementIndex.hpp"
 #include "../components/Symbols.hpp"
 #include "../components/NodeDisplayObj.hpp"
 #include "../components/ElementEditor.hpp"
@@ -280,6 +281,12 @@ struct NodeModule::State {
 		treeVersion = newTreeVersion;
 		needsRemap = false;
 	}
+
+	struct ContextMenuData {
+		bool newElemOpen = false;
+		char newElemSearchTerm[1024] = {0x00};
+		std::vector<const torasu::ElementFactory*> newElemSearchResult;
+	} contextMenuData;
 };
 
 NodeModule::NodeModule() : state(new State()) {}
@@ -418,7 +425,54 @@ void NodeModule::render(App* instance) {
 	}
 
 	ImNodes::MiniMap();
+
+	bool editorHovered = ImNodes::IsEditorHovered();
 	ImNodes::EndNodeEditor();
+	ImVec2 editorPos = ImGui::GetItemRectMin();
+
+	if (editorHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+		ImGui::OpenPopup("###new-node");;
+	}
+
+	if (ImGui::BeginPopup("New Node###new-node")) {
+		ImVec2 menuPos = ImGui::GetMousePosOnOpeningCurrentPopup();
+		menuPos.x -= editorPos.x;
+		menuPos.y -= editorPos.y;
+		bool updateSearch = false;
+		if (!state->contextMenuData.newElemOpen) {
+			ImGui::SetKeyboardFocusHere(0);
+			state->contextMenuData.newElemOpen = true;
+			updateSearch = true;
+		}
+		updateSearch |= ImGui::InputText("Search", state->contextMenuData.newElemSearchTerm, sizeof(state->contextMenuData.newElemSearchTerm)/sizeof(char));
+		
+
+
+		if (updateSearch) {
+			state->contextMenuData.newElemSearchResult = instance->getElementIndex()->getFactoryList(state->contextMenuData.newElemSearchTerm);
+		}
+
+		for (const torasu::ElementFactory* matchedFactory : state->contextMenuData.newElemSearchResult) {
+			std::string itemLabel = std::string(matchedFactory->getLabel().name) + "###" + std::string(matchedFactory->getType().str);
+			if (ImGui::MenuItem(itemLabel.c_str())) {
+				TreeManager::ElementNode* created = instance->getTreeManager()->addNode(matchedFactory->create(nullptr, torasu::ElementMap()), matchedFactory);
+				ImVec2 editorPanning = ImNodes::EditorContextGetPanning();
+				created->getDisplaySettings()->setNodePosition({
+					.mode = ElementDisplay::NodePosition::POS_MODE_SET,
+					.x = menuPos.x-editorPanning.x,
+					.y = menuPos.y-editorPanning.y,
+				});
+			}
+		}
+
+		ImGui::EndPopup();
+	} else {
+		state->contextMenuData.newElemOpen = false;
+		state->contextMenuData.newElemSearchTerm[0x00] = 0x00;
+		state->contextMenuData.newElemSearchResult.clear();
+	}
+
+
 	ImVec2 editorSize = ImGui::GetItemRectSize();
 
 	NodeDisplayObj::node_id linkReciever;

@@ -8,6 +8,7 @@
 #include <torasu/std/EIcore_runner.hpp>
 #include <torasu/std/LIcore_logger.hpp>
 
+#include "ElementIndex.hpp"
 #include "TreeManager.hpp"
 #include "RenderQueue.hpp"
 #include "monitors/Monitor.hpp"
@@ -19,7 +20,7 @@
 namespace tstudio {
 
 struct App::State {
-	std::map<std::string, const torasu::ElementFactory*> elementFactories;
+	ElementIndex elementIndex;
 	TreeManager* treeManager;
 	RenderQueue* renderQueue;
 	std::unique_ptr<torasu::tstd::EIcore_runner> runner;
@@ -52,16 +53,15 @@ App::App() {
 		const torasu::DiscoveryInterface* torasuModule = discoveryFunction();
 		auto moduleFactories = *torasuModule->getFactoryIndex();
 		for (size_t i = 0; i < moduleFactories.elementFactoryCount; i++) {
-			auto* factory = moduleFactories.elementFactoryIndex[i];
-			state->elementFactories[factory->getType().str] = factory; 
+			state->elementIndex.addElementFactory(moduleFactories.elementFactoryIndex[i]);
 		}
 	}
-	std::cout << "Loaded " << std::to_string(state->elementFactories.size()) 
+	std::cout << "Loaded " << std::to_string(state->elementIndex.factoryCount()) 
 				<< " element-types" << std::endl;
 	
 	examples::LoadedExample loadedExample = examples::makeSelectedExample();
 
-	state->treeManager = new TreeManager(state->elementFactories, loadedExample.managedElements, loadedExample.root);
+	state->treeManager = new TreeManager(&state->elementIndex, loadedExample.managedElements, loadedExample.root);
 	state->runner = std::unique_ptr<torasu::tstd::EIcore_runner>(new torasu::tstd::EIcore_runner((size_t)1));
 	state->runnerInterface = std::unique_ptr<torasu::ExecutionInterface>(state->runner->createInterface());
 	state->renderQueue = new RenderQueue(state->runnerInterface.get());
@@ -132,6 +132,10 @@ TreeManager* App::getTreeManager() {
 
 Monitor* App::getMainMonitor() {
 	return state->mainMonitor.get();
+}
+
+ElementIndex* App::getElementIndex() {
+	return &state->elementIndex;
 }
 
 } // namespace tstudio
