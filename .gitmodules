@@ -4,4 +4,4 @@
 	branch = docking
 [submodule "thirdparty/imnodes"]
 	path = thirdparty/imnodes
-	url = https://github.com/Nelarius/imnodes
+	url = https://github.com/smilediver/imnodes.git
