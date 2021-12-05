@@ -502,6 +502,7 @@ void NodeModule::render(App* instance) {
 		NodeDisplayObj::node_id ids[numNodes];
 		ImNodes::GetSelectedNodes(ids);
 		for (NodeDisplayObj::node_id nodeId : ids) {
+			if (nodeId == state->outputId) continue; // No delete on output
 			auto found = state->idMap.find(nodeId);
 			if (found != state->idMap.end()) {
 				found->second->elemNode->markForDelete();
