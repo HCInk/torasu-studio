@@ -42,13 +42,39 @@ TreeManager::ElementNode* TreeManager::addNode(torasu::Element* element, const t
 	return node;
 }
 
+void TreeManager::findUsages(std::vector<std::pair<TreeManager::ElementNode*, std::string>>* found, TreeManager::ElementNode* node) {
+	for (auto managedEntry : managedElements) {
+		managedEntry.second->findUsages(found, node);
+	}
+}
+
 bool TreeManager::hasUpdates() {
 	return !pendingUpdates.empty() || outputNode.hasUpdatePending();
 }
 
 void TreeManager::applyUpdates() {
-	for (auto* toUpdate : pendingUpdates) {
-		toUpdate->applyUpdates();
+	for (tstudio::TreeManager::ElementNode* toUpdate : pendingUpdates) {
+		if (toUpdate->isMarkedForDelete()) {
+			torasu::Element* element = toUpdate->element;
+			auto found = managedElements.find(element);
+			if (found != managedElements.end()) {
+				std::vector<std::pair<ElementNode*, std::string>> usages;
+				findUsages(&usages, toUpdate);
+				for (auto usage : usages) {
+					ElementNode* user = usage.first;
+					user->putSlot(usage.second.c_str(), nullptr);
+					user->applyUpdates();
+				}
+				managedElements.erase(found);
+				delete toUpdate;
+				delete element;
+			} else {
+				// Only managed can be marked for deletion / for mounted the elements have to be overwritten in the slot
+				throw std::runtime_error("Could not find element which was marked for deletion in managed-list.");
+			}
+		} else {
+			toUpdate->applyUpdates();
+		}
 	}
 	pendingUpdates.clear();
 	if (outputNode.hasUpdatePending()) {
@@ -182,6 +208,15 @@ void TreeManager::ElementNode::setModifiedData(torasu::DataResource* data) {
 	notifyUpdate();
 }
 
+void TreeManager::ElementNode::markForDelete() {
+	markedForDelete = true;
+	notifyUpdate();
+}
+
+bool TreeManager::ElementNode::isMarkedForDelete() {
+	return markedForDelete;
+}
+
 void TreeManager::ElementNode::notifyUpdate() {
 	if (!updatePending) {
 		manager->notifyForUpdate(this);
@@ -239,6 +274,19 @@ torasu::UserLabel TreeManager::ElementNode::getLabel() {
 
 bool TreeManager::ElementNode::isUpdatePending() {
 	return updatePending;
+}
+
+void TreeManager::ElementNode::findUsages(std::vector<std::pair<TreeManager::ElementNode*, std::string>>* found, TreeManager::ElementNode* toMatch) {
+	bool added = false;
+	for (auto slot : slots) {
+		if (slot.second.ownedByNode) {
+			// Recurse into mounted
+			slot.second.mounted->findUsages(found, toMatch);
+		} else if (!added && slot.second.mounted == toMatch) {
+			// Collect all which have the node to be matched liked
+			found->push_back({this, slot.first});
+		}
+	}
 }
 
 TreeManager::ElementNode::~ElementNode() {

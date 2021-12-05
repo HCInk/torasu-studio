@@ -21,6 +21,7 @@ public:
 	class OutputNode;
 
 	TreeManager::ElementNode* addNode(torasu::Element* element, const torasu::ElementFactory* factory = nullptr, bool lateInit = false);
+	void findUsages(std::vector<std::pair<TreeManager::ElementNode*, std::string>>* found, TreeManager::ElementNode* node);
 	bool hasUpdates();
 	void applyUpdates();
 	std::vector<ElementNode*> getManagedNodes();
@@ -43,6 +44,7 @@ public:
 		std::map<std::string, Slot> slots;
 
 		bool updatePending = false;
+		bool markedForDelete = false;
 		std::set<std::string> updatedSlots;
 		torasu::DataResource* modifiedData = nullptr;
 
@@ -63,12 +65,20 @@ public:
 		void putSlot(const char* key, ElementNode* node);
 		torasu::DataResource* getDataForModification();
 		void setModifiedData(torasu::DataResource* data);
+		void markForDelete();
+		bool isMarkedForDelete();
 
 		torasu::Identifier getType();
 		torasu::UserLabel getLabel();
 		bool isUpdatePending();
 
 		inline ElementDisplay* getDisplaySettings() { return displaySettings; }
+
+		/** Find nodes, which have the given node linked
+		 * @param[out] found: Vector to be filled with nodes which have the given node linked 
+		 * 	- if the same node is matched multiple times, the all matches are adjacent in this vector 
+		 * @param[in] toMatch: Node to be matched (may not be mounted/owned) */
+		void findUsages(std::vector<std::pair<TreeManager::ElementNode*, std::string>>* found, TreeManager::ElementNode* toMatch);
 
 		friend TreeManager;
 	};

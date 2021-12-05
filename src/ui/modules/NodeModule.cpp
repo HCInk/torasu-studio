@@ -48,14 +48,6 @@ struct NodeModule::State {
 		ImNodes::EditorContextFree(imnodesEditorContext);
 	}
 
-	bool removeNode(TreeManager::ElementNode* node) {
-		auto found = objMap.find(node);
-		if (found == objMap.end()) return false;
-		NodeDisplayObj* toRemove = found->second;
-		removeNode(toRemove);
-		return true;
-	}
-
 	void removeNode(NodeDisplayObj* toRemove) {
 		for (NodeDisplayObj* owned : toRemove->ownedNodes) {
 			removeNode(owned);
@@ -243,10 +235,6 @@ struct NodeModule::State {
 		}
 	}
 
-	void mapNode(TreeManager::ElementNode* node) {
-		updateNode(node);
-	}
-
 	void remap(App* instance) {
 		auto* treeManager = instance->getTreeManager();
 		auto newTreeVersion = treeManager->getVersion();
@@ -256,8 +244,20 @@ struct NodeModule::State {
 		std::cout << "Node-View: Remap..."
 			" (" << (needsRemap ? "REINIT - " : "") << std::to_string(treeVersion) << ">>" << std::to_string(newTreeVersion)  << ")"<< std::endl;
 #endif
+		// Create list of existing ones, to check which end up not matched
+		std::set<tstudio::NodeDisplayObj*> unmatchedNodeObjs;
+		std::transform(objMap.begin(), objMap.end(),
+			std::inserter(unmatchedNodeObjs, unmatchedNodeObjs.end()),
+			[](auto pair){ return pair.second; });
+
+		// Update/Inser existing ones
 		for (auto* node : treeManager->getManagedNodes()) {
-			mapNode(node);
+			tstudio::NodeDisplayObj* nodeObj = updateNode(node);
+			unmatchedNodeObjs.erase(nodeObj); // Remove since this was matched
+		}
+		// Remove unmatched ones
+		for (tstudio::NodeDisplayObj* unmatchedNodeObj : unmatchedNodeObjs) {
+			removeNode(unmatchedNodeObj);
 		}
 		outputNode = treeManager->getOutputNode();
 		TreeManager::ElementNode* selected = outputNode->getSelected();
@@ -325,6 +325,7 @@ void renderLinks(const NodeDisplayObj& nodeObj, NodeModule::State* state) {
 } // namespace
 
 void NodeModule::render(App* instance) {
+	bool focused = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
 	ImNodes::EditorContextSet(state->imnodesEditorContext);
 	state->remap(instance);
 
@@ -470,6 +471,20 @@ void NodeModule::render(App* instance) {
 		state->contextMenuData.newElemOpen = false;
 		state->contextMenuData.newElemSearchTerm[0x00] = 0x00;
 		state->contextMenuData.newElemSearchResult.clear();
+	}
+
+	if (focused && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_Delete))) {
+		size_t numNodes = ImNodes::NumSelectedNodes();
+		NodeDisplayObj::node_id ids[numNodes];
+		ImNodes::GetSelectedNodes(ids);
+		for (NodeDisplayObj::node_id nodeId : ids) {
+			auto found = state->idMap.find(nodeId);
+			if (found != state->idMap.end()) {
+				found->second->elemNode->markForDelete();
+			} else {
+				throw std::logic_error("Unknown node-id on delete!");
+			}
+		}	
 	}
 
 
