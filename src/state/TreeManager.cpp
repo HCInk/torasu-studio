@@ -55,24 +55,34 @@ bool TreeManager::hasUpdates() {
 void TreeManager::applyUpdates() {
 	for (tstudio::TreeManager::ElementNode* toUpdate : pendingUpdates) {
 		if (toUpdate->isMarkedForDelete()) {
+			// std::cout << "found for delete: " << toUpdate << std::endl;
 			torasu::Element* element = toUpdate->element;
+			// std::cout << "delete of " << element->getType().str << ": start" << std::endl;
 			auto found = managedElements.find(element);
 			if (found != managedElements.end()) {
 				std::vector<std::pair<ElementNode*, std::string>> usages;
 				findUsages(&usages, toUpdate);
 				for (auto usage : usages) {
 					ElementNode* user = usage.first;
-					user->putSlot(usage.second.c_str(), nullptr);
+					// std::cout << "delete of " << element->getType().str << ": unlink " << user->getType().str << std::endl;
+					user->putSlotInteral(usage.second.c_str(), nullptr);
 					user->applyUpdates();
 				}
+				if (toUpdate == outputNode.getSelected()) {
+					// std::cout << "delete of " << element->getType().str << ": unlink out" << std::endl;
+					outputNode.setSelected(nullptr);
+				}
+				// std::cout << "delete of " << element->getType().str << ": del self" << std::endl;
 				managedElements.erase(found);
 				delete toUpdate;
 				delete element;
+				// std::cout << "delete finished" << std::endl;
 			} else {
 				// Only managed can be marked for deletion / for mounted the elements have to be overwritten in the slot
 				throw std::runtime_error("Could not find element which was marked for deletion in managed-list.");
 			}
 		} else {
+			// std::cout << "apply updates: " << toUpdate << std::endl;
 			toUpdate->applyUpdates();
 		}
 	}
@@ -132,6 +142,7 @@ TreeManager::ElementNode* TreeManager::getStoredInstance(const torasu::Element* 
 }
 
 void TreeManager::notifyForUpdate(ElementNode* node) {
+	// std::cout << "Notified for update of " << node << std::endl;
 	pendingUpdates.push_back(node);
 }
 
@@ -174,13 +185,17 @@ void TreeManager::ElementNode::updateLinks() {
 	}
 }
 
-void TreeManager::ElementNode::putSlot(const char* key, TreeManager::ElementNode* node) {
+void TreeManager::ElementNode::putSlotInteral(const char* key, TreeManager::ElementNode* node) {
 	auto& slot = slots[key];
 	if (slot.ownedByNode) delete slot.mounted;
 	slot.ownedByNode = false;
 	slot.mounted = node;
 
 	updatedSlots.insert(key);
+}
+
+void TreeManager::ElementNode::putSlot(const char* key, TreeManager::ElementNode* node) {
+	putSlotInteral(key, node);
 	notifyUpdate();
 }
 

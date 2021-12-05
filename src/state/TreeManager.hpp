@@ -55,6 +55,8 @@ public:
 	protected:
 		ElementNode(TreeManager* manager, torasu::Element* element, const torasu::ElementFactory* elementFactory);
 		~ElementNode();
+		/** @brief does the same as putSlot() just does not trigger an update-notification */
+		void putSlotInteral(const char* key, ElementNode* node);
 
 		void applyUpdates();
 		void updateLinks();
