@@ -286,6 +286,7 @@ struct NodeModule::State {
 		bool newElemOpen = false;
 		char newElemSearchTerm[1024] = {0x00};
 		std::vector<const torasu::ElementFactory*> newElemSearchResult;
+		size_t newElemCurrentSelected = 0;
 	} contextMenuData;
 };
 
@@ -431,7 +432,8 @@ void NodeModule::render(App* instance) {
 	ImNodes::EndNodeEditor();
 	ImVec2 editorPos = ImGui::GetItemRectMin();
 
-	if (editorHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+	if ((editorHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+		|| (focused && (ImGui::GetIO().KeyMods & ImGuiKeyModFlags_Shift) != 0 && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_A), false))) {
 		ImGui::OpenPopup("###new-node");;
 	}
 
@@ -439,6 +441,7 @@ void NodeModule::render(App* instance) {
 		ImVec2 menuPos = ImGui::GetMousePosOnOpeningCurrentPopup();
 		menuPos.x -= editorPos.x;
 		menuPos.y -= editorPos.y;
+		bool submitSelection = false;
 		bool updateSearch = false;
 		if (!state->contextMenuData.newElemOpen) {
 			ImGui::SetKeyboardFocusHere(0);
@@ -446,16 +449,31 @@ void NodeModule::render(App* instance) {
 			updateSearch = true;
 		}
 		updateSearch |= ImGui::InputText("Search", state->contextMenuData.newElemSearchTerm, sizeof(state->contextMenuData.newElemSearchTerm)/sizeof(char));
-		
-
+		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow), true)) {
+			state->contextMenuData.newElemCurrentSelected++;
+			if (state->contextMenuData.newElemCurrentSelected >= state->contextMenuData.newElemSearchResult.size()) {
+				state->contextMenuData.newElemCurrentSelected = 0;
+			}
+		} else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow), true)) {
+			if (state->contextMenuData.newElemCurrentSelected <= 0) {
+				state->contextMenuData.newElemCurrentSelected = state->contextMenuData.newElemSearchResult.size();
+			}
+			state->contextMenuData.newElemCurrentSelected--;
+		} else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter), true)) {
+			submitSelection = true;
+		}
 
 		if (updateSearch) {
 			state->contextMenuData.newElemSearchResult = instance->getElementIndex()->getFactoryList(state->contextMenuData.newElemSearchTerm);
+			state->contextMenuData.newElemCurrentSelected = 0;
 		}
 
+		size_t currItemNum = 0;
 		for (const torasu::ElementFactory* matchedFactory : state->contextMenuData.newElemSearchResult) {
-			std::string itemLabel = std::string(matchedFactory->getLabel().name) + "###" + std::string(matchedFactory->getType().str);
-			if (ImGui::MenuItem(itemLabel.c_str())) {
+			bool selected = currItemNum == state->contextMenuData.newElemCurrentSelected;
+			std::string itemLabel = std::string(selected ? ">> " : "") + std::string(matchedFactory->getLabel().name) + "###" + std::string(matchedFactory->getType().str);
+			if (!selected) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4({1.0, 1.0, 1.0, 0.6}));
+			if (ImGui::MenuItem(itemLabel.c_str()) || (selected && submitSelection)) {
 				TreeManager::ElementNode* created = instance->getTreeManager()->addNode(matchedFactory->create(nullptr, torasu::ElementMap()), matchedFactory);
 				ImVec2 editorPanning = ImNodes::EditorContextGetPanning();
 				created->getDisplaySettings()->setNodePosition({
@@ -463,7 +481,13 @@ void NodeModule::render(App* instance) {
 					.x = menuPos.x-editorPanning.x,
 					.y = menuPos.y-editorPanning.y,
 				});
+				submitSelection = false;
+				ImGui::CloseCurrentPopup();
+			} else if (ImGui::IsItemHovered()) {
+				state->contextMenuData.newElemCurrentSelected = currItemNum;
 			}
+			if (!selected) ImGui::PopStyleColor();
+			currItemNum++;
 		}
 
 		ImGui::EndPopup();
