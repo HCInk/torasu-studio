@@ -300,6 +300,27 @@ void NodeModule::onMount() {}
 
 namespace {
 
+void destoryLink(NodeDisplayObj::node_id linkReciever, NodeModule::State* state) {
+#if DEBUG_LOG
+	std::cout << "Node-View: Destory link " << linkReciever << std::endl;
+#endif
+	if (linkReciever == state->outputId) {
+		state->setLinkedToOutput(nullptr);
+	} else {
+		auto foundNode = state->idMap.find(linkReciever);
+		if (foundNode != state->idMap.end()) {
+			auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
+			if (foundAttr != foundNode->second->attributeIds.end()) {
+				foundNode->second->elemNode->putSlot(foundAttr->second.c_str(), nullptr);
+			} else {
+				throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
+			}
+		} else {
+			throw std::logic_error("Failed to find node for link-id");
+		}
+	}
+}
+
 void renderLinks(const NodeDisplayObj& nodeObj, NodeModule::State* state) {
 	auto* slots = nodeObj.elemNode->getSlots(); 
 
@@ -498,19 +519,30 @@ void NodeModule::render(App* instance) {
 	}
 
 	if (focused && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_Delete))) {
-		size_t numNodes = ImNodes::NumSelectedNodes();
-		NodeDisplayObj::node_id ids[numNodes];
-		ImNodes::GetSelectedNodes(ids);
-		for (NodeDisplayObj::node_id nodeId : ids) {
-			if (nodeId == state->outputId) continue; // No delete on output
-			auto found = state->idMap.find(nodeId);
-			if (found != state->idMap.end()) {
-				found->second->elemNode->markForDelete();
-			} else {
-				throw std::logic_error("Unknown node-id on delete!");
+		{ // Delete Nodes
+			size_t numNodes = ImNodes::NumSelectedNodes();
+			NodeDisplayObj::node_id ids[numNodes];
+			ImNodes::GetSelectedNodes(ids);
+			for (NodeDisplayObj::node_id nodeId : ids) {
+				if (nodeId == state->outputId) continue; // No delete on output
+				auto found = state->idMap.find(nodeId);
+				if (found != state->idMap.end()) {
+					found->second->elemNode->markForDelete();
+				} else {
+					throw std::logic_error("Unknown node-id on delete!");
+				}
 			}
+			ImNodes::ClearNodeSelection();
 		}
-		ImNodes::ClearNodeSelection();
+		{ // Destory Links
+			size_t numLinks = ImNodes::NumSelectedLinks();
+			NodeDisplayObj::node_id ids[numLinks];
+			ImNodes::GetSelectedLinks(ids);
+			for (NodeDisplayObj::node_id linkId : ids) {
+				destoryLink(linkId, state);
+			}
+			ImNodes::ClearLinkSelection();
+		}
 	}
 
 
@@ -518,24 +550,7 @@ void NodeModule::render(App* instance) {
 
 	NodeDisplayObj::node_id linkReciever;
 	if (ImNodes::IsLinkDestroyed(&linkReciever)) {
-#if DEBUG_LOG
-		std::cout << "Node-View: Destory link " << linkReciever << std::endl;
-#endif
-		if (linkReciever == state->outputId) {
-			state->setLinkedToOutput(nullptr);
-		} else {
-			auto foundNode = state->idMap.find(linkReciever);
-			if (foundNode != state->idMap.end()) {
-				auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
-				if (foundAttr != foundNode->second->attributeIds.end()) {
-					foundNode->second->elemNode->putSlot(foundAttr->second.c_str(), nullptr);
-				} else {
-					throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
-				}
-			} else {
-				throw std::logic_error("Failed to find node for link-id");
-			}
-		}
+		destoryLink(linkReciever, state);
 	}
 	NodeDisplayObj::node_id linkedNode;
 	if (ImNodes::IsLinkCreated(&linkedNode, &linkReciever)) {
