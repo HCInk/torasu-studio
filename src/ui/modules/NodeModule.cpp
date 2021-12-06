@@ -509,7 +509,8 @@ void NodeModule::render(App* instance) {
 			} else {
 				throw std::logic_error("Unknown node-id on delete!");
 			}
-		}	
+		}
+		ImNodes::ClearNodeSelection();
 	}
 
 
