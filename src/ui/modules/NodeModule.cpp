@@ -16,6 +16,7 @@
 #include "../components/Symbols.hpp"
 #include "../components/NodeDisplayObj.hpp"
 #include "../components/ElementEditor.hpp"
+#include "../components/SelectionMenu.hpp"
 
 #define DEBUG_LOG true
 
@@ -283,10 +284,12 @@ struct NodeModule::State {
 	}
 
 	struct ContextMenuData {
-		bool newElemOpen = false;
-		char newElemSearchTerm[1024] = {0x00};
-		std::vector<const torasu::ElementFactory*> newElemSearchResult;
-		size_t newElemCurrentSelected = 0;
+		static const char* getElemFactoryDisplayLabel(const torasu::ElementFactory* factory) {
+			return factory->getLabel().name;
+		}
+		SelectionMenu<const torasu::ElementFactory*> newNodeSelection;
+
+		ContextMenuData() : newNodeSelection(&getElemFactoryDisplayLabel) {}
 	} contextMenuData;
 };
 
@@ -455,67 +458,35 @@ void NodeModule::render(App* instance) {
 
 	if ((editorHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 		|| (focused && (ImGui::GetIO().KeyMods & ImGuiKeyModFlags_Shift) != 0 && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_A), false))) {
-		ImGui::OpenPopup("###new-node");;
+		ImGui::OpenPopup("###new-node");
 	}
 
 	if (ImGui::BeginPopup("New Node###new-node")) {
 		ImVec2 menuPos = ImGui::GetMousePosOnOpeningCurrentPopup();
 		menuPos.x -= editorPos.x;
 		menuPos.y -= editorPos.y;
-		bool submitSelection = false;
-		bool updateSearch = false;
-		if (!state->contextMenuData.newElemOpen) {
-			ImGui::SetKeyboardFocusHere(0);
-			state->contextMenuData.newElemOpen = true;
-			updateSearch = true;
-		}
-		updateSearch |= ImGui::InputText("Search", state->contextMenuData.newElemSearchTerm, sizeof(state->contextMenuData.newElemSearchTerm)/sizeof(char));
-		if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow), true)) {
-			state->contextMenuData.newElemCurrentSelected++;
-			if (state->contextMenuData.newElemCurrentSelected >= state->contextMenuData.newElemSearchResult.size()) {
-				state->contextMenuData.newElemCurrentSelected = 0;
-			}
-		} else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow), true)) {
-			if (state->contextMenuData.newElemCurrentSelected <= 0) {
-				state->contextMenuData.newElemCurrentSelected = state->contextMenuData.newElemSearchResult.size();
-			}
-			state->contextMenuData.newElemCurrentSelected--;
-		} else if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter), true)) {
-			submitSelection = true;
+		
+		auto& selectionMenu = state->contextMenuData.newNodeSelection;
+		
+		if (const char* searchTerm = selectionMenu.needsSearchUpdate()) {
+			selectionMenu.resultList = instance->getElementIndex()->getFactoryList(searchTerm);
+			selectionMenu.submitSearchUpdate();
 		}
 
-		if (updateSearch) {
-			state->contextMenuData.newElemSearchResult = instance->getElementIndex()->getFactoryList(state->contextMenuData.newElemSearchTerm);
-			state->contextMenuData.newElemCurrentSelected = 0;
-		}
-
-		size_t currItemNum = 0;
-		for (const torasu::ElementFactory* matchedFactory : state->contextMenuData.newElemSearchResult) {
-			bool selected = currItemNum == state->contextMenuData.newElemCurrentSelected;
-			std::string itemLabel = std::string(selected ? ">> " : "") + std::string(matchedFactory->getLabel().name) + "###" + std::string(matchedFactory->getType().str);
-			if (!selected) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4({1.0, 1.0, 1.0, 0.6}));
-			if (ImGui::MenuItem(itemLabel.c_str()) || (selected && submitSelection)) {
-				TreeManager::ElementNode* created = instance->getTreeManager()->addNode(matchedFactory->create(nullptr, torasu::ElementMap()), matchedFactory);
-				ImVec2 editorPanning = ImNodes::EditorContextGetPanning();
-				created->getDisplaySettings()->setNodePosition({
-					.mode = ElementDisplay::NodePosition::POS_MODE_SET,
-					.x = menuPos.x-editorPanning.x,
-					.y = menuPos.y-editorPanning.y,
-				});
-				submitSelection = false;
-				ImGui::CloseCurrentPopup();
-			} else if (ImGui::IsItemHovered()) {
-				state->contextMenuData.newElemCurrentSelected = currItemNum;
-			}
-			if (!selected) ImGui::PopStyleColor();
-			currItemNum++;
+		const torasu::ElementFactory* selected;
+		if (selectionMenu.render(&selected)) {
+			TreeManager::ElementNode* created = instance->getTreeManager()->addNode(selected->create(nullptr, torasu::ElementMap()), selected);
+			ImVec2 editorPanning = ImNodes::EditorContextGetPanning();
+			created->getDisplaySettings()->setNodePosition({
+				.mode = ElementDisplay::NodePosition::POS_MODE_SET,
+				.x = menuPos.x-editorPanning.x,
+				.y = menuPos.y-editorPanning.y,
+			});
 		}
 
 		ImGui::EndPopup();
 	} else {
-		state->contextMenuData.newElemOpen = false;
-		state->contextMenuData.newElemSearchTerm[0x00] = 0x00;
-		state->contextMenuData.newElemSearchResult.clear();
+		state->contextMenuData.newNodeSelection.reset();
 	}
 
 	if (focused && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_Delete))) {
