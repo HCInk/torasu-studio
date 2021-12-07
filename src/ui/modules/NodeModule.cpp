@@ -289,7 +289,18 @@ struct NodeModule::State {
 		}
 		SelectionMenu<const torasu::ElementFactory*> newNodeSelection;
 
-		ContextMenuData() : newNodeSelection(&getElemFactoryDisplayLabel) {}
+		static const char* getSlotDisplayLabel(const torasu::ElementFactory::SlotDescriptor* slot) {
+			return slot != nullptr ? slot->label.name : "<none>";
+		}
+		SelectionMenu<const torasu::ElementFactory::SlotDescriptor*> slotSelection;
+
+		const torasu::ElementFactory* selectedFactory = nullptr;
+		enum InsertMode {
+			InsertMode_NORMAL,
+			InsertMode_LINKS,
+		} insertMode;
+
+		ContextMenuData() : newNodeSelection(&getElemFactoryDisplayLabel), slotSelection(&getSlotDisplayLabel) {}
 	} contextMenuData;
 };
 
@@ -345,6 +356,51 @@ void renderLinks(const NodeDisplayObj& nodeObj, NodeModule::State* state) {
 	for (NodeDisplayObj* owned : nodeObj.ownedNodes) {
 		renderLinks(*owned, state);
 	}
+}
+
+void createNodeInLink(NodeModule::State* state, TreeManager* treeManager, NodeDisplayObj::node_id linkId, const torasu::ElementFactory* factory, const torasu::ElementFactory::SlotDescriptor* reconnectSlot) {
+	TreeManager::ElementNode* created = treeManager->addNode(factory->create(nullptr, torasu::ElementMap()), factory);
+	
+	TreeManager::ElementNode* previouslyConnected = nullptr;
+	ElementDisplay::NodePosition recieverPosition;
+	if (linkId == state->outputId) {
+		previouslyConnected = treeManager->getOutputNode()->getSelected();
+		treeManager->getOutputNode()->setSelected(created);
+	} else {
+		auto foundNode = state->idMap.find(linkId);
+		if (foundNode != state->idMap.end()) {
+			auto foundAttr = foundNode->second->attributeIds.find(linkId);
+			if (foundAttr != foundNode->second->attributeIds.end()) {
+				auto* recieverNode = foundNode->second->elemNode;
+				auto& slotMap = *recieverNode->getSlots();
+				auto foundPrevConnected = slotMap.find(foundAttr->second);
+				if (foundPrevConnected != slotMap.end() && !foundPrevConnected->second.ownedByNode) {
+					previouslyConnected = foundPrevConnected->second.mounted;
+				} else {
+					throw std::logic_error("Previous content of found slot is invalid");
+				}
+				recieverNode->putSlot(foundAttr->second.c_str(), created);
+				recieverPosition = recieverNode->getDisplaySettings()->getNodePosition();
+			} else {
+				throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
+			}
+		} else {
+			throw std::logic_error("Failed to find node for link-id");
+		}
+	}
+
+	if (reconnectSlot != nullptr) {
+		created->putSlot(reconnectSlot->id.str, previouslyConnected);
+	}
+
+	ElementDisplay::NodePosition prevPosition = previouslyConnected->getDisplaySettings()->getNodePosition();
+	ElementDisplay::NodePosition newPos = {
+		.mode = tstudio::ElementDisplay::NodePosition::POS_MODE_SET,
+		.x = (prevPosition.x + recieverPosition.x)/2,
+		.y = (prevPosition.y + recieverPosition.y)/2,
+	};
+	created->getDisplaySettings()->setNodePosition(newPos);
+
 }
 
 } // namespace
@@ -459,6 +515,9 @@ void NodeModule::render(App* instance) {
 	if ((editorHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 		|| (focused && (ImGui::GetIO().KeyMods & ImGuiKeyModFlags_Shift) != 0 && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_A), false))) {
 		ImGui::OpenPopup("###new-node");
+		state->contextMenuData.insertMode = ((ImGui::GetIO().KeyMods & ImGuiKeyModFlags_Alt) != 0) 
+			? State::ContextMenuData::InsertMode_LINKS 
+			: State::ContextMenuData::InsertMode_NORMAL;
 	}
 
 	if (ImGui::BeginPopup("New Node###new-node")) {
@@ -466,27 +525,73 @@ void NodeModule::render(App* instance) {
 		menuPos.x -= editorPos.x;
 		menuPos.y -= editorPos.y;
 		
-		auto& selectionMenu = state->contextMenuData.newNodeSelection;
-		
-		if (const char* searchTerm = selectionMenu.needsSearchUpdate()) {
-			selectionMenu.resultList = instance->getElementIndex()->getFactoryList(searchTerm);
-			selectionMenu.submitSearchUpdate();
+		if (state->contextMenuData.insertMode == State::ContextMenuData::InsertMode_NORMAL) {
+			ImGui::TextUnformatted("Create Node");
+		} else if (state->contextMenuData.insertMode == State::ContextMenuData::InsertMode_LINKS) {
+			ImGui::TextUnformatted("Create Node on Link");
 		}
 
-		const torasu::ElementFactory* selected;
-		if (selectionMenu.render(&selected)) {
-			TreeManager::ElementNode* created = instance->getTreeManager()->addNode(selected->create(nullptr, torasu::ElementMap()), selected);
-			ImVec2 editorPanning = ImNodes::EditorContextGetPanning();
-			created->getDisplaySettings()->setNodePosition({
-				.mode = ElementDisplay::NodePosition::POS_MODE_SET,
-				.x = menuPos.x-editorPanning.x,
-				.y = menuPos.y-editorPanning.y,
-			});
+		if (state->contextMenuData.insertMode == State::ContextMenuData::InsertMode_NORMAL
+			 || state->contextMenuData.selectedFactory == nullptr) {
+
+			auto& selectionMenu = state->contextMenuData.newNodeSelection;
+			if (const char* searchTerm = selectionMenu.needsSearchUpdate()) {
+				selectionMenu.resultList = instance->getElementIndex()->getFactoryList(searchTerm);
+				selectionMenu.submitSearchUpdate();
+			}
+
+			const torasu::ElementFactory* selected;
+			if (selectionMenu.render(&selected)) {
+				if (state->contextMenuData.insertMode == State::ContextMenuData::InsertMode_NORMAL) {
+					TreeManager::ElementNode* created = instance->getTreeManager()->addNode(selected->create(nullptr, torasu::ElementMap()), selected);
+					ImVec2 editorPanning = ImNodes::EditorContextGetPanning();
+					created->getDisplaySettings()->setNodePosition({
+						.mode = ElementDisplay::NodePosition::POS_MODE_SET,
+						.x = menuPos.x-editorPanning.x,
+						.y = menuPos.y-editorPanning.y,
+					});
+					ImGui::CloseCurrentPopup();
+				} else {
+					state->contextMenuData.selectedFactory = selected;
+					state->contextMenuData.newNodeSelection.reset();
+				}
+			}
+		} else if (state->contextMenuData.selectedFactory != nullptr) {
+			if (state->contextMenuData.insertMode == State::ContextMenuData::InsertMode_LINKS) {
+				auto* elemFactory = state->contextMenuData.selectedFactory;
+				auto& selectionMenu = state->contextMenuData.slotSelection;
+				if (const char* searchTerm = selectionMenu.needsSearchUpdate()) {
+					selectionMenu.resultList.clear();
+					selectionMenu.resultList.push_back(nullptr);
+					size_t slotCount = elemFactory->getSlotIndex().slotCount;
+					const torasu::ElementFactory::SlotDescriptor* slotIndex = elemFactory->getSlotIndex().slotIndex;
+					for (size_t i = 0; i < slotCount; i++) {
+						selectionMenu.resultList.push_back(slotIndex+i);
+					}
+					selectionMenu.submitSearchUpdate();
+				}
+
+				const torasu::ElementFactory::SlotDescriptor* selected;
+				if (selectionMenu.render(&selected)) {
+					size_t numLinks = ImNodes::NumSelectedLinks();
+					NodeDisplayObj::node_id ids[numLinks];
+					ImNodes::GetSelectedLinks(ids);
+					for (NodeDisplayObj::node_id linkId : ids) {
+						createNodeInLink(state, instance->getTreeManager(), linkId, elemFactory, selected);
+					}
+					selectionMenu.reset();
+					ImGui::CloseCurrentPopup();
+				}
+			} else {
+				ImGui::Text("Invalid state of insert-menu!?");
+			}
 		}
 
 		ImGui::EndPopup();
 	} else {
 		state->contextMenuData.newNodeSelection.reset();
+		state->contextMenuData.slotSelection.reset();
+		state->contextMenuData.selectedFactory = nullptr;
 	}
 
 	if (focused && ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_Delete))) {

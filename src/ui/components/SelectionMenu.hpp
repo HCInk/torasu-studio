@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 namespace tstudio {
 
@@ -74,27 +75,26 @@ public:
 			submitSelection = true;
 		}
 
-		// if (updateSearch) {
-		// 	newElemSearchResult = instance->getElementIndex()->getFactoryList(newElemSearchTerm);
-		// 	newElemCurrentSelected = 0;
-		// }
-
 		size_t currItemNum = 0;
-		for (T matchedFactory : resultList) {
+		auto* window = ImGui::GetCurrentWindow();
+		auto prevWindowFlags = window->Flags;
+		window->Flags &= ~ImGuiWindowFlags_Popup;
+
+		for (T listEntry : resultList) {
 			bool selected = currItemNum == currentSelected;
-			std::string itemLabel = std::string(selected ? ">> " : "") + std::string(labelResolver(matchedFactory)) + "###" + std::string(matchedFactory->getType().str);
+			std::string itemLabel = std::string(selected ? ">> " : "") + std::string(labelResolver(listEntry)) + "###" + std::to_string(currItemNum);
 			if (!selected) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4({1.0, 1.0, 1.0, 0.6}));
 			if (ImGui::MenuItem(itemLabel.c_str()) || (selected && submitSelection)) {
-				*selection = matchedFactory;
+				*selection = listEntry;
 				selectionDone = true;
-				reset();
-				ImGui::CloseCurrentPopup();
 			} else if (ImGui::IsItemHovered()) {
 				currentSelected = currItemNum;
 			}
 			if (!selected) ImGui::PopStyleColor();
 			currItemNum++;
 		}
+
+		window->Flags = prevWindowFlags;
 
 		return selectionDone;
 	}
