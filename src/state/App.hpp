@@ -16,6 +16,7 @@ struct blank_callbacks;
 class TreeManager;
 class Monitor;
 class ElementIndex;
+class UserActions;
 
 class App {
 private:
@@ -41,6 +42,7 @@ public:
 	TreeManager* getTreeManager();
 	Monitor* getMainMonitor();
 	ElementIndex* getElementIndex();
+	UserActions* getUserActions();
 
 
 	double currentNumber = 0;

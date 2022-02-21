@@ -13,6 +13,8 @@
 #include "../../state/TreeManager.hpp"
 #include "../../state/ElementDisplay.hpp"
 #include "../../state/ElementIndex.hpp"
+#include "../../state/actions/UserActions.hpp"
+#include "../../state/actions/tree/CreateElement.hpp"
 #include "../components/Symbols.hpp"
 #include "../components/NodeDisplayObj.hpp"
 #include "../components/ElementEditor.hpp"
@@ -543,13 +545,15 @@ void NodeModule::render(App* instance) {
 			const torasu::ElementFactory* selected;
 			if (selectionMenu.render(&selected)) {
 				if (state->contextMenuData.insertMode == State::ContextMenuData::InsertMode_NORMAL) {
-					TreeManager::ElementNode* created = instance->getTreeManager()->addNode(selected->create(nullptr, torasu::ElementMap()), selected);
 					ImVec2 editorPanning = ImNodes::EditorContextGetPanning();
-					created->getDisplaySettings()->setNodePosition({
+					auto* createAction = new CreateElement(selected, nullptr, {
 						.mode = ElementDisplay::NodePosition::POS_MODE_SET,
 						.x = menuPos.x-editorPanning.x,
 						.y = menuPos.y-editorPanning.y,
 					});
+
+					instance->getUserActions()->execute(instance, createAction);
+
 					ImGui::CloseCurrentPopup();
 				} else {
 					state->contextMenuData.selectedFactory = selected;

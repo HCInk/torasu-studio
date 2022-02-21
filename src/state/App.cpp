@@ -8,6 +8,7 @@
 #include <torasu/std/EIcore_runner.hpp>
 #include <torasu/std/LIcore_logger.hpp>
 
+#include "actions/UserActions.hpp"
 #include "ElementIndex.hpp"
 #include "TreeManager.hpp"
 #include "RenderQueue.hpp"
@@ -20,6 +21,7 @@
 namespace tstudio {
 
 struct App::State {
+	UserActions userActions;
 	ElementIndex elementIndex;
 	TreeManager* treeManager;
 	RenderQueue* renderQueue;
@@ -136,6 +138,10 @@ Monitor* App::getMainMonitor() {
 
 ElementIndex* App::getElementIndex() {
 	return &state->elementIndex;
+}
+
+UserActions* App::getUserActions() {
+	return &state->userActions;
 }
 
 } // namespace tstudio

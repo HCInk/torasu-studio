@@ -60,8 +60,8 @@ size_t ElementIndex::factoryCount() const {
 	return factoriesByTypeKey.size();
 }
 
-const torasu::ElementFactory* ElementIndex::getFactoryForElement(/* const */ torasu::Element* element) const {
-	auto found = factoriesByTypeKey.find(element->getType().str);
+const torasu::ElementFactory* ElementIndex::getElementFactoyForIdentifier(torasu::Identifier ident) const {
+	auto found = factoriesByTypeKey.find(ident.str);
 	return found != factoriesByTypeKey.end() ? found->second : nullptr;
 }
 

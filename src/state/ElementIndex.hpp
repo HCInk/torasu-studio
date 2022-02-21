@@ -19,10 +19,13 @@ public:
 
 	void addElementFactory(const torasu::ElementFactory* factory);
 
-	const torasu::ElementFactory* getFactoryForElement(/* const */ torasu::Element* element) const;
+	const torasu::ElementFactory* getElementFactoyForIdentifier(torasu::Identifier ident) const;
 	size_t factoryCount() const;
 	std::vector<const torasu::ElementFactory*> getFactoryList(std::string search = "") const;
 
+	inline const torasu::ElementFactory* getFactoryForElement(/* const */ torasu::Element* element) const {
+		return getElementFactoyForIdentifier(element->getType());
+	}
 };
 
 } // namespace tstudio

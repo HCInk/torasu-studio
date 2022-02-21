@@ -25,6 +25,8 @@ add_executable(torasu-studio
 	${CMAKE_CURRENT_LIST_DIR}/src/state/ElementDisplay.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/state/ElementIndex.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/state/RenderQueue.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/state/actions/UserActions.cpp
+	${CMAKE_CURRENT_LIST_DIR}/src/state/actions/tree/CreateElement.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/state/monitors/Monitor.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/state/monitors/NumberMonitor.cpp
 	${CMAKE_CURRENT_LIST_DIR}/src/state/monitors/ImageMonitor.cpp
