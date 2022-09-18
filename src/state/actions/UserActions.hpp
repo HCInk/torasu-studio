@@ -61,9 +61,6 @@ public:
 
 class UserAction {
 public:
-	void* dependencies = nullptr;
-	size_t dependenciesSize = 0;
-
 	enum DependncyUpdateResult {
 		/** @brief  Action still available */
 		AVAILABLE,

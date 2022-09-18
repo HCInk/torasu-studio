@@ -5,10 +5,7 @@
 
 namespace tstudio {
 
-DeleteElement::DeleteElement(TreeManager::ElementNode* node) : node(node) {
-	dependencies = {node};
-	dependenciesSize = 1;
-}
+DeleteElement::DeleteElement(TreeManager::ElementNode* node) : node(node) {}
 
 DeleteElement::~DeleteElement() {}
 
