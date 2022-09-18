@@ -17,6 +17,7 @@
 #include "../../state/actions/ActionBatch.hpp"
 #include "../../state/actions/tree/CreateElement.hpp"
 #include "../../state/actions/tree/DeleteElement.hpp"
+#include "../../state/actions/tree/UpdateLink.hpp"
 #include "../components/Symbols.hpp"
 #include "../components/NodeDisplayObj.hpp"
 #include "../components/ElementEditor.hpp"
@@ -318,18 +319,21 @@ void NodeModule::onMount() {}
 
 namespace {
 
-void destoryLink(NodeDisplayObj::node_id linkReciever, NodeModule::State* state) {
+UserAction* destoryLink(NodeDisplayObj::node_id linkReciever, NodeModule::State* state) {
 #if DEBUG_LOG
 	std::cout << "Node-View: Destory link " << linkReciever << std::endl;
 #endif
 	if (linkReciever == state->outputId) {
 		state->setLinkedToOutput(nullptr);
+		return nullptr;
 	} else {
 		auto foundNode = state->idMap.find(linkReciever);
 		if (foundNode != state->idMap.end()) {
 			auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
 			if (foundAttr != foundNode->second->attributeIds.end()) {
-				foundNode->second->elemNode->putSlot(foundAttr->second.c_str(), nullptr);
+				auto* dst = foundNode->second->elemNode;
+				if (dst->isMarkedForDelete()) return nullptr;
+				return new UpdateLink(dst, foundAttr->second.c_str(), nullptr); 
 			} else {
 				throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
 			}
@@ -629,8 +633,18 @@ void NodeModule::render(App* instance) {
 			size_t numLinks = ImNodes::NumSelectedLinks();
 			NodeDisplayObj::node_id ids[numLinks];
 			ImNodes::GetSelectedLinks(ids);
+			std::vector<UserAction*> deleteActions;
 			for (NodeDisplayObj::node_id linkId : ids) {
-				destoryLink(linkId, state);
+				UserAction* action = destoryLink(linkId, state);
+				if (action != nullptr) deleteActions.push_back(action);
+			}
+			if (!deleteActions.empty()) {
+				if (deleteActions.size() == 1) {
+					instance->getUserActions()->execute(instance, deleteActions[0], "Delete Link");
+				} else {
+					instance->getUserActions()->execute(instance, new ActionBatch(deleteActions, true), 
+						"Delete " + std::to_string(deleteActions.size()) + " Links");
+				}
 			}
 			ImNodes::ClearLinkSelection();
 		}
@@ -641,7 +655,10 @@ void NodeModule::render(App* instance) {
 
 	NodeDisplayObj::node_id linkReciever;
 	if (ImNodes::IsLinkDestroyed(&linkReciever)) {
-		destoryLink(linkReciever, state);
+		auto* action = destoryLink(linkReciever, state);
+		if (action != nullptr) {
+			instance->getUserActions()->execute(instance, action, "Disconnect Link");
+		}
 	}
 	NodeDisplayObj::node_id linkedNode;
 	if (ImNodes::IsLinkCreated(&linkedNode, &linkReciever)) {
@@ -661,7 +678,13 @@ void NodeModule::render(App* instance) {
 			if (foundLinked != state->idMap.end() || foundNode != state->idMap.end()) {
 				auto foundAttr = foundNode->second->attributeIds.find(linkReciever);
 				if (foundAttr != foundNode->second->attributeIds.end()) {
-					foundNode->second->elemNode->putSlot(foundAttr->second.c_str(), foundLinked->second->elemNode);
+					auto* dst = foundNode->second->elemNode;
+					auto* src = foundLinked->second->elemNode;
+					if (!dst->isMarkedForDelete() && !src->isMarkedForDelete()) {
+						instance->getUserActions()->execute(instance, 
+							new UpdateLink(dst, foundAttr->second.c_str(), src), 
+							"Connect Link");
+					}
 				} else {
 					throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
 				}

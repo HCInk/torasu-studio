@@ -1,7 +1,9 @@
 #include "DeleteElement.hpp"
 
 #include "../../TreeManager.hpp"
+#include "../ActionBatch.hpp"
 #include "CreateElement.hpp"
+#include "UpdateLink.hpp"
 
 namespace tstudio {
 
@@ -25,6 +27,25 @@ UserAction* DeleteElement::execute(App* instance, bool generateReverse) {
 				currData != nullptr ? node->getCurrentData()->clone() : nullptr, 
 				dispSettings->getNodePosition(), dispSettings->getNodeSize(), dispSettings->doCollapseNode());
 		}
+		// Restore links
+		// TODO enable once updating links of recreated elements works
+		/* 
+		if (reverseAction != nullptr) {
+			std::vector<UserAction*> restoreActions;
+			for (auto& slot : *node->getSlots()) {
+				if (!slot.second.ownedByNode) {
+					// TODO detect and ignore defaults once possible
+					restoreActions.push_back(new UpdateLink(node, slot.first, slot.second.mounted));
+				}
+				// TODO handle inlined elements once UpdateLink supports it
+			}
+
+			if (!restoreActions.empty()) {
+				restoreActions.push_back(reverseAction);
+				reverseAction = new ActionBatch(restoreActions, true);
+			}
+		}
+		*/
 	}
 	instance->getUserActions()->notifyDependencyRemoval(instance, node);
 	node->markForDelete();
