@@ -14,6 +14,7 @@
 #include "../../state/ElementDisplay.hpp"
 #include "../../state/ElementIndex.hpp"
 #include "../../state/actions/UserActions.hpp"
+#include "../../state/actions/ActionBatch.hpp"
 #include "../../state/actions/tree/CreateElement.hpp"
 #include "../../state/actions/tree/DeleteElement.hpp"
 #include "../components/Symbols.hpp"
@@ -604,14 +605,22 @@ void NodeModule::render(App* instance) {
 			size_t numNodes = ImNodes::NumSelectedNodes();
 			NodeDisplayObj::node_id ids[numNodes];
 			ImNodes::GetSelectedNodes(ids);
+			std::vector<UserAction*> deleteActions;
 			for (NodeDisplayObj::node_id nodeId : ids) {
 				if (nodeId == state->outputId) continue; // No delete on output
 				auto found = state->idMap.find(nodeId);
 				if (found != state->idMap.end()) {
-					auto* deleteAction = new DeleteElement(found->second->elemNode);
-					instance->getUserActions()->execute(instance, deleteAction, "Delete Node");
+					deleteActions.push_back(new DeleteElement(found->second->elemNode));
 				} else {
 					throw std::logic_error("Unknown node-id on delete!");
+				}
+			}
+			if (!deleteActions.empty()) {
+				if (deleteActions.size() == 1) {
+					instance->getUserActions()->execute(instance, deleteActions[0], "Delete Node");
+				} else {
+					instance->getUserActions()->execute(instance, new ActionBatch(deleteActions, true), 
+						"Delete " + std::to_string(deleteActions.size()) + " Nodes");
 				}
 			}
 			ImNodes::ClearNodeSelection();
