@@ -125,8 +125,7 @@ void UserActions::clearHistory() {
 void UserActions::notifyDependencyRemoval(App* instance, void* removed) {
 	for (int64_t i = undoStack.size()-1; i >= 0; i--) {
 		auto entry = undoStack[i];
-		void* depArr[] = {removed};
-		auto updateResult = entry.action->notifyDependencyRemoval(instance, depArr, 1);
+		auto updateResult = entry.action->notifyDependencyRemoval(instance, removed);
 		if (updateResult == UserAction::DependncyUpdateResult::UNAVAILABLE) {
 			clearUndoUntil(i);
 			break;
@@ -135,8 +134,7 @@ void UserActions::notifyDependencyRemoval(App* instance, void* removed) {
 
 	for (int64_t i = redoStack.size()-1; i >= 0; i--) {
 		auto entry = redoStack[i];
-		void* depArr[] = {removed};
-		auto updateResult = entry.action->notifyDependencyRemoval(instance, depArr, 1);
+		auto updateResult = entry.action->notifyDependencyRemoval(instance, removed);
 		if (updateResult == UserAction::DependncyUpdateResult::UNAVAILABLE) {
 			clearRedoUntil(i);
 			break;

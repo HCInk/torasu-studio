@@ -18,7 +18,7 @@ public:
 	CreateElement(const torasu::ElementFactory* factory, torasu::DataResource* data, ElementDisplay::NodePosition position, ElementDisplay::NodeSize size = {.hasSize=false}, bool collapsed = false);
 	~CreateElement();
 
-	UserAction::DependncyUpdateResult notifyDependencyRemoval(App* instance, void** removed, size_t removedCount) override;
+	UserAction::DependncyUpdateResult notifyDependencyRemoval(App* instance, void* removed) override;
 	UserAction* execute(App* instance, bool generateReverse) override;
 };
 

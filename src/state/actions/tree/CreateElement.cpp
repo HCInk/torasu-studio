@@ -11,7 +11,7 @@ CreateElement::~CreateElement() {
 	if (data != nullptr) delete data;
 }
 
-UserAction::DependncyUpdateResult CreateElement::notifyDependencyRemoval(App* instance, void** removed, size_t removedCount) {
+UserAction::DependncyUpdateResult CreateElement::notifyDependencyRemoval(App* instance, void* removed) {
 	return AVAILABLE;
 }
 

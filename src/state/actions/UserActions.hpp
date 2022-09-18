@@ -74,13 +74,12 @@ public:
 	};
 
 	/**
-	 * @brief  Notify action about dependencies about to be removed
+	 * @brief  Notify action about a dependency being about to be removed
 	 * @param  instance: Application-instance
-	 * @param  removed: pointer array (size removedCount) of dependencies for removal
-	 * @param  removedCount: Size of removed array
+	 * @param  removed: Removed dependecy
 	 * @retval Result of dependency-update
 	 */
-	virtual DependncyUpdateResult notifyDependencyRemoval(App* instance, void** removed, size_t removedCount) = 0;
+	virtual DependncyUpdateResult notifyDependencyRemoval(App* instance, void* removed) = 0;
 
 	/**
 	 * @brief  Execute Action

@@ -12,10 +12,8 @@ DeleteElement::DeleteElement(TreeManager::ElementNode* node) : node(node) {
 
 DeleteElement::~DeleteElement() {}
 
-UserAction::DependncyUpdateResult DeleteElement::notifyDependencyRemoval(App* instance, void** removed, size_t removedCount) {
-	for (size_t i = 0; i < removedCount; i++) {
-		if (removed[i] == reinterpret_cast<const void*>(node)) return UNAVAILABLE;
-	}
+UserAction::DependncyUpdateResult DeleteElement::notifyDependencyRemoval(App* instance, void* removed) {
+	if (removed == reinterpret_cast<const void*>(node)) return UNAVAILABLE;
 	return AVAILABLE;
 }
 

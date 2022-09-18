@@ -14,7 +14,7 @@ public:
 	DeleteElement(TreeManager::ElementNode* node);
 	~DeleteElement();
 
-	UserAction::DependncyUpdateResult notifyDependencyRemoval(App* instance, void** removed, size_t removedCount) override;
+	UserAction::DependncyUpdateResult notifyDependencyRemoval(App* instance, void* removed) override;
 	UserAction* execute(App* instance, bool generateReverse) override;
 };
 
