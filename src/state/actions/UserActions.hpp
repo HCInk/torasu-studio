@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <string>
 
 #include "../App.hpp"
 
@@ -11,19 +12,51 @@ namespace tstudio {
 class UserAction;
 
 class UserActions {
+public:
+	struct HistoryEntry {
+		/** @brief action to be executed, in order to undo action 
+		 * @note needs to be freed manually */
+		UserAction* action;
+		/** @brief label of action */
+		std::string label;
+	};
 private:
-	std::vector<UserAction*> undoStack;
+	/** @brief undo-stack, oldest at lowest, newest at highest */
+	std::vector<HistoryEntry> undoStack;
+	/** @brief redo-stack, oldest at lowest, newest at highest */
+	std::vector<HistoryEntry> redoStack;
 	
+	/** @brief Clears all undo-entries */
 	void clearUndo();
-	void pushUndo(UserAction* action);
-	UserAction* popUndo();
+	/** @brief Clears undo-entries before and at the given index */
+	void clearUndoUntil(int64_t index);
+	/** @brief Pushes undo-action on the undoStack */
+	void pushUndo(HistoryEntry action);
+	/** @brief Pops undo-action off the undoStack */
+	HistoryEntry popUndo();
+
+
+	/** @brief Clears all redo-entries */
+	void clearRedo();
+	/** @brief Clears redo-entries before and at the given index */
+	void clearRedoUntil(int64_t index);
+	/** @brief Pushes redo-action on the redoStack */
+	void pushRedo(HistoryEntry action);
+	/** @brief Pops redo-action off the redoStack */
+	HistoryEntry popRedo();
 
 public:
 	UserActions();
 	~UserActions();
 
-	void execute(App* instance, UserAction* action);
+	void execute(App* instance, UserAction* action, std::string label);
 	void undo(App* instance);
+	void redo(App* instance);
+	void clearHistory();
+	void notifyDependencyRemoval(App* instance, void* removed);
+
+	inline const std::vector<HistoryEntry>& getUndoStack() const { return undoStack; } 
+	inline const std::vector<HistoryEntry>& getRedoStack() const { return redoStack; } 
 };
 
 class UserAction {
@@ -47,7 +80,7 @@ public:
 	 * @param  removedCount: Size of removed array
 	 * @retval Result of dependency-update
 	 */
-	virtual DependncyUpdateResult notifyDependencyRemoval(App* instance, void* removed, size_t removedCount) = 0;
+	virtual DependncyUpdateResult notifyDependencyRemoval(App* instance, void** removed, size_t removedCount) = 0;
 
 	/**
 	 * @brief  Execute Action

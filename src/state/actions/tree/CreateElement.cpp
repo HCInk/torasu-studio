@@ -1,5 +1,7 @@
 #include "CreateElement.hpp"
 
+#include "DeleteElement.hpp"
+
 namespace tstudio {
 
 CreateElement::CreateElement(const torasu::ElementFactory* factory, torasu::DataResource* data, ElementDisplay::NodePosition position, ElementDisplay::NodeSize size, bool collapsed)
@@ -9,7 +11,7 @@ CreateElement::~CreateElement() {
 	if (data != nullptr) delete data;
 }
 
-UserAction::DependncyUpdateResult CreateElement::notifyDependencyRemoval(App* instance, void* removed, size_t removedCount) {
+UserAction::DependncyUpdateResult CreateElement::notifyDependencyRemoval(App* instance, void** removed, size_t removedCount) {
 	return AVAILABLE;
 }
 
@@ -23,7 +25,11 @@ UserAction* CreateElement::execute(App* instance, bool generateReverse) {
 	if (size.hasSize) {
 		displaySettings->setNodeSize(size.width, size.height);
 	}
-	return nullptr;
+	if (generateReverse) {
+		return new DeleteElement(createdNode);
+	} else {
+		return nullptr;
+	}
 }
 
 

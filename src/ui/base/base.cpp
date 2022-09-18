@@ -22,6 +22,7 @@
 #include "../../../thirdparty/imnodes/imnodes.h"
 
 #include "../modules/NodeModule.hpp"
+#include "../modules/ActionHistoryModule.hpp"
 #include "../modules/monitor/MonitorModule.hpp"
 
 namespace tstudio {
@@ -43,14 +44,17 @@ std::string generateIniCommands() {
 	
 	iniStr += generateIniWindow("###node-viewer", 0, 0, 1920, 1080, "0x00000005", 0);
 	iniStr += generateIniWindow("###node-viewer2", 0, 0, 1920, 1080, "0x00000006", 0);
-	iniStr += generateIniWindow("###splash-screen", 0, 0, 1920, 1080, "0x00000002", 0);
+	iniStr += generateIniWindow("###splash-screen", 0, 0, 1920, 1080, "0x00000007", 0);
+	iniStr += generateIniWindow("###action-history", 0, 0, 1920, 1080, "0x00000008", 0);
 	iniStr += generateIniWindow("###result-viewer", 0, 0, 1920, 1080, "0x00000003", 0);
 	iniStr += generateIniWindow("Dear ImGui Demo", 0, 0, 1920, 1080, "0x00000003", 1);
 
 	iniStr += "[Docking][Data]\n"
 		"DockSpace     ID=" + rootDockId + " Window=0xA787BDB4 Pos=0,0 Size=1920,1080 Split=Y Selected=0x25A319F0\n"
 		"  DockNode    ID=0x00000001 Parent=" + rootDockId + " SizeRef=1920,259 Split=X Selected=0xEBE6C6E6\n"
-		"    DockNode  ID=0x00000002 Parent=0x00000001 SizeRef=1587,537 Selected=0xEBE6C6E6\n"
+		"    DockNode    ID=0x00000002 Parent=0x00000001 SizeRef=1587,259 Split=X Selected=0xEBE6C6E6\n"
+		"      DockNode  ID=0x00000007 Parent=0x00000002 SizeRef=1187,537 Selected=0xEBE6C6E6\n"
+		"      DockNode  ID=0x00000008 Parent=0x00000002 SizeRef=400,537 Selected=0xEBE6C6E6\n"
 		"    DockNode  ID=0x00000003 Parent=0x00000001 SizeRef=331,537 Selected=0x25A319F0\n"
 		"  DockNode    ID=0x00000004 Parent=" + rootDockId + " SizeRef=1920,819 Split=X Selected=0x2DD179D7\n"
 		"    DockNode  ID=0x00000005 Parent=0x00000004 SizeRef=960,819 Selected=0x2DD179D7\n"
@@ -67,6 +71,7 @@ static bool reloadLayout = true;
 static NodeModule nodeModule = NodeModule();
 static NodeModule nodeModuleSecondary = NodeModule();
 static MonitorModule viewerModule = MonitorModule();
+static ActionHistoryModule actionHistoryModule = ActionHistoryModule();
 
 static void post_imgui_init(const tstudio::blank_callbacks& callbacks) {
     // Load Fonts
@@ -131,6 +136,7 @@ static void main_loop() {
 	static bool show_demo_window = true;
 	static bool show_another_window = true;
 	static bool show_second_node_editor = false;
+	static bool show_action_history = true;
 	static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	ImGui::DockSpaceOverViewport(nullptr, 0, nullptr);
@@ -148,6 +154,15 @@ static void main_loop() {
 		ImGui::Begin("Node-Editor (Secondary)###node-viewer2", &show_second_node_editor);
 
 		nodeModuleSecondary.render(app);
+
+		ImGui::End();
+	}
+
+	// 3. Show another simple window.
+	if (show_action_history)
+	{
+		ImGui::Begin("Action Hisotry###action-history", &show_action_history);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+		actionHistoryModule.render(app);
 
 		ImGui::End();
 	}
@@ -171,8 +186,8 @@ static void main_loop() {
 		ImGui::Checkbox("Another Window", &show_another_window);
 		ImGui::Checkbox("Second Nodes", &show_second_node_editor);
 
-		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-		ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+		// ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+		// ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 
 		{
 			ImGui::Text("Runner-Metrics");

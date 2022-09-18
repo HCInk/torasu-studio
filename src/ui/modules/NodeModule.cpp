@@ -15,6 +15,7 @@
 #include "../../state/ElementIndex.hpp"
 #include "../../state/actions/UserActions.hpp"
 #include "../../state/actions/tree/CreateElement.hpp"
+#include "../../state/actions/tree/DeleteElement.hpp"
 #include "../components/Symbols.hpp"
 #include "../components/NodeDisplayObj.hpp"
 #include "../components/ElementEditor.hpp"
@@ -552,7 +553,7 @@ void NodeModule::render(App* instance) {
 						.y = menuPos.y-editorPanning.y,
 					});
 
-					instance->getUserActions()->execute(instance, createAction);
+					instance->getUserActions()->execute(instance, createAction, "Create Node");
 
 					ImGui::CloseCurrentPopup();
 				} else {
@@ -607,7 +608,8 @@ void NodeModule::render(App* instance) {
 				if (nodeId == state->outputId) continue; // No delete on output
 				auto found = state->idMap.find(nodeId);
 				if (found != state->idMap.end()) {
-					found->second->elemNode->markForDelete();
+					auto* deleteAction = new DeleteElement(found->second->elemNode);
+					instance->getUserActions()->execute(instance, deleteAction, "Delete Node");
 				} else {
 					throw std::logic_error("Unknown node-id on delete!");
 				}
