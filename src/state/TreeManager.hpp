@@ -57,6 +57,7 @@ public:
 		~ElementNode();
 		/** @brief does the same as putSlot() just does not trigger an update-notification */
 		void putSlotInteral(const char* key, ElementNode* node);
+		void syncSlotInternal(Slot* slot, const torasu::ElementSlot& torasuSlot);
 
 		void applyUpdates();
 		void updateLinks();

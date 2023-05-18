@@ -159,29 +159,34 @@ TreeManager::ElementNode::ElementNode(TreeManager* manager, torasu::Element* ele
 	}
 }
 
+void TreeManager::ElementNode::syncSlotInternal(Slot* slot, const torasu::ElementSlot& torasuSlot) {
+	if (slot->ownedByNode) {
+		delete slot->mounted;
+	}
+
+	torasu::Element* elemInSlot = torasuSlot.get();
+	if (elemInSlot != nullptr) {
+		if (!torasuSlot.isOwned()) {
+			ElementNode* foundStored = manager->getStoredInstance(elemInSlot);
+			if (foundStored == nullptr) throw std::logic_error("element which is not owned by node, was not found in store!"); 
+			slot->ownedByNode = false;
+			slot->mounted = foundStored;
+		} else {
+			slot->ownedByNode = true;
+			slot->mounted = new ElementNode(manager, elemInSlot, manager->elementIndex->getFactoryForElement(elemInSlot));
+			slot->mounted->updateLinks();
+		}
+	} else {
+		slot->ownedByNode = false;
+		slot->mounted = nullptr;
+	}
+}
+
 void TreeManager::ElementNode::updateLinks() {
 	// Setting contained slots
 	for (auto elementSlot : element->getElements()) {
 		auto& slot = slots[elementSlot.first];
-		if (slot.ownedByNode) {
-			delete slot.mounted;
-		}
-		torasu::Element* elemInSlot = elementSlot.second;
-		if (elemInSlot != nullptr) {
-
-			ElementNode* foundStored = manager->getStoredInstance(elemInSlot);
-			if (foundStored != nullptr) {
-				slot.ownedByNode = false;
-				slot.mounted = foundStored;
-			} else {
-				slot.ownedByNode = true;
-				slot.mounted = new ElementNode(manager, elemInSlot, manager->elementIndex->getFactoryForElement(elemInSlot));
-				slot.mounted->updateLinks();
-			}
-		} else {
-			slot.ownedByNode = false;
-			slot.mounted = nullptr;
-		}
+		syncSlotInternal(&slot, elementSlot.second);
 	}
 }
 
@@ -254,18 +259,50 @@ void TreeManager::ElementNode::applyUpdates() {
 	}
 
 	// Apply Slot Modififactions
-	for (auto updatedSlot : updatedSlots) {
-		auto foundNewSlot = slots.find(updatedSlot);
-		ElementNode* newNode = foundNewSlot != slots.end() ? foundNewSlot->second.mounted : nullptr;
-		torasu::Element* newElement = newNode != nullptr ? newNode->element : nullptr;
-		try {
-			element->setElement(updatedSlot, newElement);
-		} catch (const std::exception& ex) {
-			std::cerr << "Update of slot \"" << updatedSlot << "\" in a " << element->getType().str
+	for (auto slotKey : updatedSlots) {
+		auto foundNewSlot = slots.find(slotKey);
+		Slot* slot = foundNewSlot != slots.end() ? &(foundNewSlot->second) : nullptr;
+		ElementNode* nodeHandle = slot != nullptr ? slot->mounted : nullptr;
+		torasu::Element* newElement = nodeHandle != nullptr ? nodeHandle->element : nullptr;
+		const torasu::ElementSlot slotToSet(newElement, false);
+		
+		const torasu::OptElementSlot updatedSlot = element->setElement(slotKey, newElement != nullptr ? &slotToSet : nullptr);
+		
+		bool syncSlot = false;
+
+		std::string errorText;
+		if (updatedSlot && updatedSlot->get() != nullptr) {
+			if (newElement == nullptr) { // sent nullptr, spawned default-element
+				syncSlot = true;
+			} else if (dynamic_cast<void*>(updatedSlot->get()) != dynamic_cast<void*>(newElement)) { // rejected change, but still has another node mounted
+				errorText = "Unfitting node for slot!";
+				syncSlot = true;
+			}
+		} else {
+			if (newElement != nullptr) { // rejected setting element, nothing mounted instead
+				errorText = "Slot doesn't exist or couldn't be created!";
+				syncSlot = true;
+			}
+		}
+
+		if (!errorText.empty()) {
+			std::cerr << "Update of slot \"" << slotKey << "\" in a " << element->getType().str
 				<< " to an instance of " 
 				<< (newElement != nullptr ? newElement->getType().str : "(NONE)")
-				<< " failed: " << ex.what() << std::endl;
+				<< " rejected: " << errorText << std::endl;
+
 		}
+
+		if (syncSlot && slot != nullptr) {
+			if (updatedSlot) {
+				syncSlotInternal(slot, *updatedSlot);
+			} else {
+				torasu::ElementSlot dummySlot;
+				syncSlotInternal(slot, dummySlot);
+				slots.erase(foundNewSlot);
+			}
+		}
+
 	}
 	updatedSlots.clear();
 

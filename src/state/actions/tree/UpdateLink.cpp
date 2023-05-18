@@ -29,10 +29,12 @@ UserAction* UpdateLink::execute(App* instance, bool generateReverse) {
 		} else {
 			currElem = nullptr;
 		}
-		if (!isInlined) {
+		if (isInlined) {
+			// TODO generate reversion for inlined elements
+			reverseAction = new UpdateLink(dst, key, nullptr);
+		} else {
 			reverseAction = new UpdateLink(dst, key, currElem);
 		}
-		// TODO generate reversion for inlined elements
 	}
 	dst->putSlot(key.c_str(), src);
 	return reverseAction;

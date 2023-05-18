@@ -333,6 +333,11 @@ UserAction* destoryLink(NodeDisplayObj::node_id linkReciever, NodeModule::State*
 			if (foundAttr != foundNode->second->attributeIds.end()) {
 				auto* dst = foundNode->second->elemNode;
 				if (dst->isMarkedForDelete()) return nullptr;
+
+				auto foundSrcSlot = dst->getSlots()->find(foundAttr->second);
+				if (foundSrcSlot == dst->getSlots()->end() || foundSrcSlot->second.mounted->isMarkedForDelete()) {
+					return nullptr;
+				}
 				return new UpdateLink(dst, foundAttr->second.c_str(), nullptr); 
 			} else {
 				throw std::logic_error("Error resolving atrribute in node which is mapped for that id");
