@@ -526,9 +526,9 @@ void NodeModule::render(App* instance) {
 	ImVec2 editorPos = ImGui::GetItemRectMin();
 
 	if ((editorHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-		|| (focused && (ImGui::GetIO().KeyMods & ImGuiKeyModFlags_Shift) != 0 && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_A), false))) {
+		|| (focused && (ImGui::GetIO().KeyMods & ImGuiModFlags_Shift) != 0 && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_A), false))) {
 		ImGui::OpenPopup("###new-node");
-		state->contextMenuData.insertMode = ((ImGui::GetIO().KeyMods & ImGuiKeyModFlags_Alt) != 0) 
+		state->contextMenuData.insertMode = ((ImGui::GetIO().KeyMods & ImGuiModFlags_Alt) != 0) 
 			? State::ContextMenuData::InsertMode_LINKS 
 			: State::ContextMenuData::InsertMode_NORMAL;
 	}

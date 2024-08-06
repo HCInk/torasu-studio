@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 20)
 include_directories(BEFORE ${CMAKE_CURRENT_LIST_DIR}/thirdparty/imgui)
 
 if (EMSCRIPTEN)
-	include_directories(BEFORE /usr/lib/emscripten/system/include/)
+	# include_directories(BEFORE /usr/lib/emscripten/system/include/)
 	message("Compiling for web")
 else()
 	message("Compiling for local")
